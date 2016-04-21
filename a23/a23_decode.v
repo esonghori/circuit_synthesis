@@ -337,7 +337,7 @@ assign o_dabt_status      = abt_status_reg;
 // But if the instruction does not execute because of the
 // condition, then need to select the next instruction to
 // decode
-assign use_saved_current_instruction =  instruction_execute &&
+assign use_saved_current_instruction =  //instruction_execute &&
                           ( control_state == MEM_WAIT1     ||
                             control_state == MEM_WAIT2     ||
                             control_state == MTRANS_EXEC1  ||
@@ -1047,12 +1047,12 @@ always @(*)
         // Do this even if this instruction does not execute because of Condition
         pre_fetch_instruction_wen   = 1'd1;
 
-        if ( instruction_execute ) // conditional execution state
-            begin
+        //if ( instruction_execute ) // conditional execution state
+        //    begin
             address_sel_nxt             = 4'd3; // pc  (not pc + 4)
             pc_wen_nxt                  = 1'd0; // hold current PC value
-            end
-        end
+       //    end
+       end
 
 
     // completion of load operation
@@ -1090,8 +1090,8 @@ always @(*)
         // Do this even if this instruction does not execute because of Condition
         pre_fetch_instruction_wen   = 1'd1;
 
-        if ( instruction_execute ) // conditional execution state
-            begin
+        //if ( instruction_execute ) // conditional execution state
+        //    begin
             address_sel_nxt             = 4'd5;  // o_address
             pc_wen_nxt                  = 1'd0;  // hold current PC value
             data_access_exec_nxt        = 1'd1;  // indicate that its a data read or write,
@@ -1109,7 +1109,7 @@ always @(*)
             //if ( {instruction[22],instruction[20]} == 2'b10 )
             if ( {instruction[22:20]} == 3'b100 )
                 o_user_mode_regs_store_nxt = 1'd1;
-            end
+            //end
         end
 
 
@@ -1144,7 +1144,7 @@ always @(*)
 
 
         // second or fourth cycle of multiple load or store
-    if ( control_state == MTRANS_EXEC3 && instruction_execute )
+    if ( control_state == MTRANS_EXEC3 /*&& instruction_execute*/ )
         begin
         address_sel_nxt             = 4'd3; // pc  (not pc + 4)
         pc_wen_nxt                  = 1'd0;  // hold current PC value
@@ -1166,7 +1166,7 @@ always @(*)
        end
 
     // state is used for LMD/STM of a single register
-    if ( control_state == MTRANS_EXEC3B && instruction_execute )
+    if ( control_state == MTRANS_EXEC3B /*&& instruction_execute*/ )
         begin
         // Save the next instruction to execute later
         // Do this even if this instruction does not execute because of Condition
@@ -1253,7 +1253,7 @@ always @(*)
 
 
         // Multiply or Multiply-Accumulate
-    if ( control_state == MULT_PROC1 && instruction_execute )
+    if ( control_state == MULT_PROC1 /*&& instruction_execute*/ )
         begin
         // Save the next instruction to execute later
         // Do this even if this instruction does not execute because of Condition
@@ -1304,7 +1304,7 @@ always @(*)
         end
 
     // swp - do write request in 2nd cycle
-    if ( control_state == SWAP_WRITE && instruction_execute )
+    if ( control_state == SWAP_WRITE /*&& instruction_execute*/ )
         begin
         barrel_shift_data_sel_nxt       = 2'd2; // Shift value from Rm register
         address_sel_nxt                 = 4'd4; // Rn
@@ -1315,7 +1315,7 @@ always @(*)
         if ( instruction[22] )
             byte_enable_sel_nxt = 2'd1;         // Save byte
 
-        if ( instruction_execute )                         // conditional execution state
+        //if ( instruction_execute )                         // conditional execution state
             pc_wen_nxt                  = 1'd0; // hold current PC value
 
         // Save the next instruction to execute later
@@ -1335,11 +1335,11 @@ always @(*)
         if ( i_execute_address[1:0] != 2'd0 )
             barrel_shift_function_nxt = ROR;
 
-        if ( instruction_execute ) // conditional execution state
-            begin
+        //if ( instruction_execute ) // conditional execution state
+        //    begin
             address_sel_nxt             = 4'd3; // pc  (not pc + 4)
             pc_wen_nxt                  = 1'd0; // hold current PC value
-            end
+        //    end
 
         // load a byte
         if ( instruction[22] )
@@ -1359,7 +1359,7 @@ always @(*)
         end
 
     // 1 cycle delay for Co-Processor Register access
-    if ( control_state == COPRO_WAIT && instruction_execute )
+    if ( control_state == COPRO_WAIT /*&& instruction_execute*/ )
         begin
         pre_fetch_instruction_wen = 1'd1;
 
@@ -1416,18 +1416,18 @@ assign firq_not_user_mode_nxt = !user_mode_regs_load_nxt && status_bits_mode_nxt
 // this replicates the current value of the execute signal in the execute stage
 assign instruction_execute = conditional_execute ( condition_r, i_execute_status_bits[31:28] );
 
-assign instruction_valid = (control_state == EXECUTE || control_state == PRE_FETCH_EXEC) ||
+assign instruction_valid = (control_state == EXECUTE || control_state == PRE_FETCH_EXEC); 
+                     //||
                      // when last instruction was multi-cycle instruction but did not execute
                      // because condition was false then act like you're in the execute state
-                    (!instruction_execute && (control_state == PC_STALL1    ||
-                                              control_state == MEM_WAIT1    ||
-                                              control_state == COPRO_WAIT   ||
-                                              control_state == SWAP_WRITE   ||
-                                              control_state == MULT_PROC1   ||
-                                              control_state == MTRANS_EXEC1 ||
-                                              control_state == MTRANS_EXEC3 ||
-                                              control_state == MTRANS_EXEC3B  ) );
-
+                     // (!instruction_execute &&(control_state == PC_STALL1    ||
+                     //                          control_state == MEM_WAIT1    ||
+                     //                          control_state == COPRO_WAIT   ||
+                     //                          control_state == SWAP_WRITE   ||
+                     //                          control_state == MULT_PROC1   ||
+                     //                          control_state == MTRANS_EXEC1 ||
+                     //                          control_state == MTRANS_EXEC3 ||
+                     //                          control_state == MTRANS_EXEC3B  ) );
 
  always @*
     begin
@@ -1488,9 +1488,9 @@ assign instruction_valid = (control_state == EXECUTE || control_state == PRE_FET
 
     if ( control_state == MULT_PROC1 )
         begin
-        if (!instruction_execute)
-            control_state_nxt = PRE_FETCH_EXEC;
-        else
+        // if (!instruction_execute)
+        //     control_state_nxt = PRE_FETCH_EXEC;
+        // else
             control_state_nxt = MULT_PROC2;
         end
 

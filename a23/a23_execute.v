@@ -404,12 +404,12 @@ assign execute = conditional_execute ( i_condition, status_bits_flags );
             
 // allow the PC to increment to the next instruction when current
 // instruction does not execute
-assign pc_wen       = i_pc_wen || !execute;
+assign pc_wen       = i_pc_wen ;//|| !execute;
 
 // only update register bank if current instruction executes
-assign reg_bank_wen = {{15{execute}} & i_reg_bank_wen};
+assign reg_bank_wen = i_reg_bank_wen;
 
-assign reg_bank_wsel = {{4{~execute}} | i_reg_bank_wsel};
+assign reg_bank_wsel = i_reg_bank_wsel;
 
 
 // ========================================================
@@ -559,6 +559,7 @@ a23_register_bank u_register_bank(
     .i_clk                   ( i_clk                     ),
     .i_rst                   ( i_rst                     ),
     .i_fetch_stall           ( i_fetch_stall             ),
+    .i_execute               ( execute                   ),
     .i_rm_sel                ( i_rm_sel                  ),
     .i_rds_sel               ( i_rds_sel                 ),
     .i_rn_sel                ( i_rn_sel                  ),
