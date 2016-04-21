@@ -462,7 +462,7 @@ always @( posedge i_clk or posedge i_rst)
       o_write_data            <= 'd0;
       address_r               <= 'd0;
       o_adex                  <= 'd0;
-      o_address_valid         <= 'd0;
+      o_address_valid         <= 1'd1;
       o_byte_enable           <= 'd0;
       o_copro_write_data      <= 'd0;
       base_address            <= 'd0;
@@ -476,12 +476,12 @@ always @( posedge i_clk or posedge i_rst)
     // remove extra signals
     o_priviledged           <= 'd0;//priviledged_update             ? priviledged_nxt              : o_priviledged;
     o_exclusive             <= 'd0;//exclusive_update               ? i_exclusive_exec             : o_exclusive;
-    o_data_access           <= data_access_update             ? i_data_access_exec           : o_data_access;
+    o_data_access           <= 'd0;//data_access_update             ? i_data_access_exec           : o_data_access;
     o_write_enable          <= write_enable_update            ? write_enable_nxt             : o_write_enable;
     o_write_data            <= write_data_update              ? write_data_nxt               : o_write_data; 
     address_r               <= address_update                 ? o_address_nxt                : address_r;    
     o_adex                  <= 'd0;//address_update                 ? adex_nxt                     : o_adex;    
-    o_address_valid         <= address_update                 ? 1'd1                         : o_address_valid;
+    o_address_valid         <= 1'd1;//address_update                 ? 1'd1                         : o_address_valid;
     o_byte_enable           <= byte_enable_update             ? byte_enable_nxt              : o_byte_enable;
     o_copro_write_data      <= 'd0;//copro_write_data_update        ? write_data_nxt               : o_copro_write_data; 
 

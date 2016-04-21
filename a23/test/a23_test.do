@@ -19,11 +19,11 @@ sim:/a23_testbench/u_a23_gc_main/u_a23_core/u_execute/u_register_bank/r12 \
 sim:/a23_testbench/u_a23_gc_main/u_a23_core/u_execute/u_register_bank/r13_rds \
 sim:/a23_testbench/u_a23_gc_main/u_a23_core/u_execute/u_register_bank/r14_rds \
 sim:/a23_testbench/u_a23_gc_main/u_a23_core/u_execute/u_register_bank/r15_out_rn \
-sim:/a23_testbench/u_a23_gc_main/p_mem \
-sim:/a23_testbench/u_a23_gc_main/g_mem \
-sim:/a23_testbench/u_a23_gc_main/e_mem \
-sim:/a23_testbench/u_a23_gc_main/out_mem \
-sim:/a23_testbench/u_a23_gc_main/stack_mem
+sim:/a23_testbench/u_a23_gc_main/u_a23_mem/p_mem \
+sim:/a23_testbench/u_a23_gc_main/u_a23_mem/g_mem \
+sim:/a23_testbench/u_a23_gc_main/u_a23_mem/e_mem \
+sim:/a23_testbench/u_a23_gc_main/u_a23_mem/out_mem \
+sim:/a23_testbench/u_a23_gc_main/u_a23_mem/stack_mem
 
 
 run -all

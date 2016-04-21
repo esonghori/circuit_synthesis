@@ -70,11 +70,11 @@ output   [3:0]              o_m_byte_enable,
 input    [31:0]             i_m_read
 );
 
-assign o_m_address     = (i_address_valid) ? i_address : 32'b0;
-assign o_m_write       = (i_write_enable && i_address_valid)? i_write_data : 32'b0;
-assign o_m_write_en    = (i_write_enable && i_address_valid);
+assign o_m_address     = i_address;
+assign o_m_write       = i_write_data;
+assign o_m_write_en    = i_write_enable;
 assign o_m_byte_enable = i_byte_enable;
-assign o_read_data     = (i_address_valid) ? i_m_read : 32'b0;
+assign o_read_data     = i_m_read;
 assign o_fetch_stall   = 'b0;
 
 endmodule
