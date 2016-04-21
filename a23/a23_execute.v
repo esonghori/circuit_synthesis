@@ -432,13 +432,13 @@ assign write_enable_nxt = execute && i_write_data_wen;
 // ========================================================
 
 assign priviledged_update              = !i_fetch_stall;       
-assign data_access_update              = !i_fetch_stall && execute;
+assign data_access_update              = !i_fetch_stall;// && execute;
 assign write_enable_update             = !i_fetch_stall;
-assign write_data_update               = !i_fetch_stall && execute && i_write_data_wen;
-assign exclusive_update                = !i_fetch_stall && execute;
+assign write_data_update               = !i_fetch_stall;//&& execute && i_write_data_wen;
+assign exclusive_update                = !i_fetch_stall;// && execute;
 assign address_update                  = !i_fetch_stall;
-assign byte_enable_update              = !i_fetch_stall && execute && i_write_data_wen;
-assign copro_write_data_update         = !i_fetch_stall && execute && i_copro_write_data_wen;
+assign byte_enable_update              = !i_fetch_stall;//&& execute && i_write_data_wen;
+assign copro_write_data_update         = !i_fetch_stall;//&& execute && i_copro_write_data_wen;
 
 assign base_address_update             = !i_fetch_stall && execute && i_base_address_wen; 
 assign status_bits_flags_update        = !i_fetch_stall && execute && i_status_bits_flags_wen;
@@ -472,27 +472,27 @@ always @( posedge i_clk or posedge i_rst)
       status_bits_mode_rds    <= 'd0;
       status_bits_irq_mask    <= 1'd1;
       status_bits_firq_mask   <= 1'd1;
-    end else
-    begin                                                                                                             
-    o_priviledged           <= priviledged_update             ? priviledged_nxt              : o_priviledged;
-    o_exclusive             <= exclusive_update               ? i_exclusive_exec             : o_exclusive;
+    end else begin
+    // remove extra signals
+    o_priviledged           <= 'd0;//priviledged_update             ? priviledged_nxt              : o_priviledged;
+    o_exclusive             <= 'd0;//exclusive_update               ? i_exclusive_exec             : o_exclusive;
     o_data_access           <= data_access_update             ? i_data_access_exec           : o_data_access;
     o_write_enable          <= write_enable_update            ? write_enable_nxt             : o_write_enable;
     o_write_data            <= write_data_update              ? write_data_nxt               : o_write_data; 
     address_r               <= address_update                 ? o_address_nxt                : address_r;    
-    o_adex                  <= address_update                 ? adex_nxt                     : o_adex;    
+    o_adex                  <= 'd0;//address_update                 ? adex_nxt                     : o_adex;    
     o_address_valid         <= address_update                 ? 1'd1                         : o_address_valid;
     o_byte_enable           <= byte_enable_update             ? byte_enable_nxt              : o_byte_enable;
-    o_copro_write_data      <= copro_write_data_update        ? write_data_nxt               : o_copro_write_data; 
+    o_copro_write_data      <= 'd0;//copro_write_data_update        ? write_data_nxt               : o_copro_write_data; 
 
     base_address            <= base_address_update            ? rn                           : base_address;    
 
     status_bits_flags       <= status_bits_flags_update       ? status_bits_flags_nxt        : status_bits_flags;
-    status_bits_mode        <=  status_bits_mode_nr;
+    status_bits_mode        <= status_bits_mode_nr;
     status_bits_mode_rds_oh <= status_bits_mode_rds_oh_update ? status_bits_mode_rds_oh_nxt  : status_bits_mode_rds_oh;
     status_bits_mode_rds    <= status_bits_mode_rds_nr;
-    status_bits_irq_mask    <= status_bits_irq_mask_update    ? status_bits_irq_mask_nxt     : status_bits_irq_mask;
-    status_bits_firq_mask   <= status_bits_firq_mask_update   ? status_bits_firq_mask_nxt    : status_bits_firq_mask;
+    status_bits_irq_mask    <= 1'd1;//status_bits_irq_mask_update    ? status_bits_irq_mask_nxt     : status_bits_irq_mask;
+    status_bits_firq_mask   <= 1'd1;//status_bits_firq_mask_update   ? status_bits_firq_mask_nxt    : status_bits_firq_mask;
     end
 
 assign o_address = address_r;
@@ -510,9 +510,9 @@ a23_barrel_shift u_barrel_shift  (
     .i_shift_amount   ( shift_amount              ),
     .i_shift_imm_zero ( i_shift_imm_zero          ),
     .i_function       ( i_barrel_shift_function   ),
-
     .o_out            ( barrel_shift_out          ),
-    .o_carry_out      ( barrel_shift_carry        ));
+    .o_carry_out      ( barrel_shift_carry        )
+    );
 
 
 
@@ -529,9 +529,9 @@ a23_alu u_alu (
     .i_barrel_shift_carry   ( barrel_shift_carry_alu  ),
     .i_status_bits_carry    ( status_bits_flags[1]    ),
     .i_function             ( i_alu_function          ),
-  
     .o_out                  ( alu_out                 ),
-    .o_flags                ( alu_flags               ));
+    .o_flags                ( alu_flags               )
+    );
 
 
 
@@ -548,8 +548,8 @@ a23_multiply u_multiply (
     .i_execute      ( execute               ),
     .o_out          ( multiply_out          ),
     .o_flags        ( multiply_flags        ),  // [1] = N, [0] = Z
-    .o_done         ( o_multiply_done       )     
-);
+    .o_done         ( o_multiply_done       )
+    );
 
 
 // ========================================================
@@ -568,24 +568,20 @@ a23_register_bank u_register_bank(
     .i_reg                   ( reg_write_nxt             ),
     .i_mode_idec             ( i_status_bits_mode        ),
     .i_mode_exec             ( status_bits_mode          ),
-
     .i_status_bits_flags     ( status_bits_flags         ),
     .i_status_bits_irq_mask  ( status_bits_irq_mask      ),
     .i_status_bits_firq_mask ( status_bits_firq_mask     ),
-
     // pre-encoded in decode stage to speed up long path
     .i_firq_not_user_mode    ( i_firq_not_user_mode      ),
-    
     // use one-hot version for speed, combine with i_user_mode_regs_store
     .i_mode_rds_exec         ( status_bits_mode_rds_oh   ),  
-    
     .i_user_mode_regs_load   ( i_user_mode_regs_load     ),
     .o_rm                    ( rm                        ),
     .o_rs                    ( rs                        ),
     .o_rd                    ( rd                        ),
     .o_rn                    ( rn                        ),
     .o_pc                    ( pc                        )
-);
+    );
 
 endmodule
 
