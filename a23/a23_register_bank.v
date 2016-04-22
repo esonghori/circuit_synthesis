@@ -45,7 +45,6 @@ module a23_register_bank (
 
 input                       i_clk,
 input                       i_rst,
-input                       i_fetch_stall,
 input       [3:0]           i_rm_sel,
 input       [3:0]           i_rds_sel,
 input       [3:0]           i_rn_sel,
@@ -119,43 +118,41 @@ wire  [31:0] r14_rds;
 // Register Update
 // ========================================================
 always @ ( posedge i_clk or posedge i_rst)
-    if (i_rst) begin
-        r0       <= 'd0;
-        r1       <= 'd0;
-        r2       <= 'd0;
-        r3       <= 'd0;
-        r4       <= 'd0;
-        r5       <= 'd0;
-        r6       <= 'd0;
-        r7       <= 'd0;
-        r8       <= 'd0;
-        r9       <= 'd0;
-        r10      <= 'd0;
-        r11      <= 'd0;
-        r12      <= 'd0;
-        r13      <= 'd0;
-        r14      <= 'd0;
-        r15      <= 24'h0;
-    end else
-    if (!i_fetch_stall)
-        begin
-        r0       <=  i_reg_bank_wen[0 ]              ? i_reg : r0;  
-        r1       <=  i_reg_bank_wen[1 ]              ? i_reg : r1;  
-        r2       <=  i_reg_bank_wen[2 ]              ? i_reg : r2;  
-        r3       <=  i_reg_bank_wen[3 ]              ? i_reg : r3;  
-        r4       <=  i_reg_bank_wen[4 ]              ? i_reg : r4;  
-        r5       <=  i_reg_bank_wen[5 ]              ? i_reg : r5;  
-        r6       <=  i_reg_bank_wen[6 ]              ? i_reg : r6;  
-        r7       <=  i_reg_bank_wen[7 ]              ? i_reg : r7;  
-        r8       <=  i_reg_bank_wen[8 ]              ? i_reg : r8;  
-        r9       <=  i_reg_bank_wen[9 ]              ? i_reg : r9;  
-        r10      <=  i_reg_bank_wen[10]              ? i_reg : r10; 
-        r11      <=  i_reg_bank_wen[11]              ? i_reg : r11; 
-        r12      <=  i_reg_bank_wen[12]              ? i_reg : r12; 
-        r13      <=  i_reg_bank_wen[13]              ? i_reg : r13;
-        r14      <=  i_reg_bank_wen[14]              ? i_reg : r14;
-        r15      <=  i_pc_wen                        ?  i_pc : r15;
-        end
+  if (i_rst) begin
+      r0       <= 'd0;
+      r1       <= 'd0;
+      r2       <= 'd0;
+      r3       <= 'd0;
+      r4       <= 'd0;
+      r5       <= 'd0;
+      r6       <= 'd0;
+      r7       <= 'd0;
+      r8       <= 'd0;
+      r9       <= 'd0;
+      r10      <= 'd0;
+      r11      <= 'd0;
+      r12      <= 'd0;
+      r13      <= 'd0;
+      r14      <= 'd0;
+      r15      <= 24'h0;
+  end else begin
+      r0       <=  i_reg_bank_wen[0 ]              ? i_reg : r0;  
+      r1       <=  i_reg_bank_wen[1 ]              ? i_reg : r1;  
+      r2       <=  i_reg_bank_wen[2 ]              ? i_reg : r2;  
+      r3       <=  i_reg_bank_wen[3 ]              ? i_reg : r3;  
+      r4       <=  i_reg_bank_wen[4 ]              ? i_reg : r4;  
+      r5       <=  i_reg_bank_wen[5 ]              ? i_reg : r5;  
+      r6       <=  i_reg_bank_wen[6 ]              ? i_reg : r6;  
+      r7       <=  i_reg_bank_wen[7 ]              ? i_reg : r7;  
+      r8       <=  i_reg_bank_wen[8 ]              ? i_reg : r8;  
+      r9       <=  i_reg_bank_wen[9 ]              ? i_reg : r9;  
+      r10      <=  i_reg_bank_wen[10]              ? i_reg : r10; 
+      r11      <=  i_reg_bank_wen[11]              ? i_reg : r11; 
+      r12      <=  i_reg_bank_wen[12]              ? i_reg : r12; 
+      r13      <=  i_reg_bank_wen[13]              ? i_reg : r13;
+      r14      <=  i_reg_bank_wen[14]              ? i_reg : r14;
+      r15      <=  i_pc_wen                        ?  i_pc : r15;
+  end
     
     
 // ========================================================

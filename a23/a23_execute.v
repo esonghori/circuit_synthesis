@@ -70,7 +70,6 @@ output                      o_multiply_done,
 // --------------------------------------------------
 // Control signals from Instruction Decode stage
 // --------------------------------------------------
-input                       i_fetch_stall,          // stall all stages of the cpu at the same time
 input      [31:0]           i_imm32,
 input      [4:0]            i_imm_shift_amount,
 input                       i_shift_imm_zero,
@@ -325,14 +324,13 @@ assign write_enable_nxt = execute && i_write_data_wen;
 // Register Update
 // ========================================================
 
-assign data_access_update              = !i_fetch_stall;// && execute;
-assign write_enable_update             = !i_fetch_stall;
-assign write_data_update               = !i_fetch_stall;//&& execute && i_write_data_wen;
-assign address_update                  = !i_fetch_stall;
-assign byte_enable_update              = !i_fetch_stall;//&& execute && i_write_data_wen;
-
-assign base_address_update             = !i_fetch_stall && execute && i_base_address_wen; 
-assign status_bits_flags_update        = !i_fetch_stall && execute && i_status_bits_flags_wen;
+assign data_access_update              = 1'b1;
+assign write_enable_update             = 1'b1;
+assign write_data_update               = 1'b1;
+assign address_update                  = 1'b1;
+assign byte_enable_update              = 1'b1;
+assign base_address_update             = execute && i_base_address_wen; 
+assign status_bits_flags_update        = execute && i_status_bits_flags_wen;
 
 always @( posedge i_clk or posedge i_rst)
     if(i_rst) begin
@@ -404,7 +402,6 @@ a23_alu u_alu (
 a23_multiply u_multiply (
     .i_clk          ( i_clk                 ),
     .i_rst          ( i_rst                 ),
-    .i_fetch_stall  ( i_fetch_stall         ),
     .i_a_in         ( rs                    ),
     .i_b_in         ( rm                    ),
     .i_function     ( i_multiply_function   ),
@@ -421,7 +418,6 @@ a23_multiply u_multiply (
 a23_register_bank u_register_bank(
     .i_clk                   ( i_clk                     ),
     .i_rst                   ( i_rst                     ),
-    .i_fetch_stall           ( i_fetch_stall             ),
     .i_rm_sel                ( i_rm_sel                  ),
     .i_rds_sel               ( i_rds_sel                 ),
     .i_rn_sel                ( i_rn_sel                  ),

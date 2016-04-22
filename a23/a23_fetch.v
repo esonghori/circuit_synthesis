@@ -58,9 +58,6 @@ input                       i_data_access,      // high for data petch, low for 
 input                       i_cache_enable,     // cache enable
 input                       i_cache_flush,      // cache flush
 input       [31:0]          i_cacheable_area,   // each bit corresponds to 2MB address space
-output                      o_fetch_stall,      // when this is asserted all registers 
-                                                // in all 3 pipeline stages are held
-                                                // at their current values
 output   [31:0]             o_m_address, //memory
 output   [31:0]             o_m_write,
 output                      o_m_write_en,
@@ -73,7 +70,6 @@ assign o_m_write       = i_write_data;
 assign o_m_write_en    = i_write_enable;
 assign o_m_byte_enable = i_byte_enable;
 assign o_read_data     = i_m_read;
-assign o_fetch_stall   = 'b0;
 
 endmodule
 

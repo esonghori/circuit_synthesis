@@ -46,7 +46,6 @@ module a23_decode
 input                       i_clk,
 input                       i_rst,
 input       [31:0]          i_read_data,
-input                       i_fetch_stall,                  // stall all stages of the cpu at the same time
 input       [31:0]          i_execute_address,              // Registered address output by execute stage
                                                             // 2 LSBs of read address used for calculating
                                                             // shift in LDRB ops
@@ -1018,9 +1017,7 @@ always @ ( posedge i_clk  or posedge i_rst)
         control_state               <= RST_WAIT1;
         mtrans_reg_d1               <= 'd0;
         mtrans_reg_d2               <= 'd0;
-    end else 
-    if (!i_fetch_stall)
-        begin
+    end else begin
         o_read_data                 <= i_read_data;
         o_read_data_alignment       <= {i_execute_address[1:0], 3'd0};
         o_imm32                     <= imm32_nxt;
@@ -1066,9 +1063,7 @@ always @ ( posedge i_clk or posedge i_rst)
       saved_current_instruction_address      <= 'd0;
       pre_fetch_instruction                  <= 'd0;
       pre_fetch_instruction_address          <= 'd0;
-    end else
-    if ( !i_fetch_stall )
-        begin
+    end else begin
         // sometimes this is a pre-fetch instruction
         // e.g. two ldr instructions in a row. The second ldr will be saved
         // to the pre-fetch instruction register

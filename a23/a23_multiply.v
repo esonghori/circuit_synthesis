@@ -56,7 +56,6 @@
 module a23_multiply (
 input                       i_clk,
 input                       i_rst,
-input                       i_fetch_stall,
 
 input       [31:0]          i_a_in,         // Rds
 input       [31:0]          i_b_in,         // Rm
@@ -147,7 +146,7 @@ end
     product         <= 'd0;
     count           <= 'd0;
     o_done          <= 'd0;
-  end else if ( !i_fetch_stall  && enable)
+  end else if (enable)
   begin 
     if(i_execute) begin
           product         <= product_nxt;

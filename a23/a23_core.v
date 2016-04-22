@@ -62,11 +62,7 @@ wire                      write_enable;
 wire      [31:0]          read_data;
 wire                      data_access_exec;
 wire      [3:0]           byte_enable;
-wire                      data_access;          // high for data petch, low for instruction fetch
-
-wire                      fetch_stall;          // when this is asserted all registers in all 3 pipeline 
-                                                // stages are held
-                                                // at their current values          
+wire                      data_access;          // high for data petch, low for instruction fetch         
 wire                      status_bits_flags_wen;     
 wire     [31:0]           execute_status_bits;
                  
@@ -120,8 +116,6 @@ a23_fetch u_fetch (
     .i_cache_enable                     ( 1'b0                              ),     
     .i_cache_flush                      ( 1'b0                              ), 
     .i_cacheable_area                   ( 32'b0                             ),
-
-    .o_fetch_stall                      ( fetch_stall                       ),
     
     .o_m_address                        ( o_m_address                       ),
     .o_m_write                          ( o_m_write                         ),
@@ -141,7 +135,6 @@ a23_decode u_decode (
     
     .o_read_data                        ( read_data_s2                      ),                                          
     .o_read_data_alignment              ( read_data_alignment               ),                                          
-    .i_fetch_stall                      ( fetch_stall                       ),                                          
     .i_execute_status_bits              ( execute_status_bits               ),                                          
     .i_multiply_done                    ( multiply_done                     ),  
     .o_imm32                            ( imm32                             ),
@@ -191,9 +184,7 @@ a23_execute u_execute (
     .o_data_access                      ( data_access                       ),
     .o_write_enable                     ( write_enable                      ),
     .o_status_bits                      ( execute_status_bits               ),
-    .o_multiply_done                    ( multiply_done                     ),
-
-    .i_fetch_stall                      ( fetch_stall                       ),   
+    .o_multiply_done                    ( multiply_done                     ),   
     .i_imm32                            ( imm32                             ),   
     .i_imm_shift_amount                 ( imm_shift_amount                  ),   
     .i_shift_imm_zero                   ( shift_imm_zero                    ),   
