@@ -47,15 +47,9 @@ input                       i_clk,
 input                       i_rst,
 input       [31:0]          i_read_data,
 input                       i_fetch_stall,                  // stall all stages of the cpu at the same time
-input                       i_irq,                          // interrupt request
-input                       i_firq,                         // Fast interrupt request
-input                       i_dabt,                         // data abort interrupt request
-input                       i_iabt,                         // instruction pre-fetch abort flag
-input                       i_adex,                         // Address Exception
 input       [31:0]          i_execute_address,              // Registered address output by execute stage
                                                             // 2 LSBs of read address used for calculating
                                                             // shift in LDRB ops
-input       [7:0]           i_abt_status,                   // Abort status
 input       [31:0]          i_execute_status_bits,          // current status bits values in execute stage
 input                       i_multiply_done,                // multiply unit is nearly done
 
@@ -70,13 +64,8 @@ output reg  [31:0]          o_imm32,
 output reg  [4:0]           o_imm_shift_amount,
 output reg                  o_shift_imm_zero,
 output wire [3:0]           o_condition,
-output reg                  o_exclusive_exec,         // exclusive access request ( swap instruction )
 output reg                  o_data_access_exec,       // high means the memory access is a read
                                                             // read or write, low for instruction
-output wire [1:0]           o_status_bits_mode,
-output wire                 o_status_bits_irq_mask,
-output wire                 o_status_bits_firq_mask,
-
 output reg  [3:0]           o_rm_sel,
 output reg  [3:0]           o_rds_sel,
 output reg  [3:0]           o_rn_sel,
@@ -89,15 +78,11 @@ output reg  [1:0]           o_barrel_shift_function,
 output reg  [8:0]           o_alu_function,
 output reg                  o_use_carry_in,
 output reg  [1:0]           o_multiply_function,
-output reg  [2:0]           o_interrupt_vector_sel,
 output wire [3:0]           o_address_sel,
 output wire [1:0]           o_pc_sel,
 output reg  [1:0]           o_byte_enable_sel,        // byte, halfword or word write
 output reg  [2:0]           o_status_bits_sel,
 output reg  [2:0]           o_reg_write_sel,
-output reg                  o_user_mode_regs_load,
-output reg                  o_user_mode_regs_store_nxt,
-output reg                  o_firq_not_user_mode,
 
 output reg                  o_write_data_wen,
 output reg                  o_base_address_wen,       // save LDM base address register
@@ -105,31 +90,7 @@ output reg                  o_base_address_wen,       // save LDM base address r
 output wire                 o_pc_wen,
 output reg  [14:0]          o_reg_bank_wen,
 output reg  [3:0]           o_reg_bank_wsel,
-output reg                  o_status_bits_flags_wen,
-output reg                  o_status_bits_mode_wen,
-output reg                  o_status_bits_irq_mask_wen,
-output reg                  o_status_bits_firq_mask_wen,
-
-// --------------------------------------------------
-// Co-Processor interface
-// --------------------------------------------------
-output reg  [2:0]           o_copro_opcode1,
-output reg  [2:0]           o_copro_opcode2,
-output reg  [3:0]           o_copro_crn,
-output reg  [3:0]           o_copro_crm,
-output reg  [3:0]           o_copro_num,
-output reg  [1:0]           o_copro_operation, // 0 = no operation,
-                                                     // 1 = Move to Amber Core Register from Coprocessor
-                                                     // 2 = Move to Coprocessor from Amber Core Register
-output reg                  o_copro_write_data_wen,
-output                      o_iabt_trigger,
-output      [31:0]          o_iabt_address,
-output      [7:0]           o_iabt_status,
-output                      o_dabt_trigger,
-output      [31:0]          o_dabt_address,
-output      [7:0]           o_dabt_status
-
-
+output reg                  o_status_bits_flags_wen
 );
 
 `include "a23_localparams.vh"
@@ -153,26 +114,23 @@ localparam [4:0] RST_WAIT1      = 5'd0,
                  MTRANS_EXEC3   = 5'd12,
                  MTRANS_EXEC3B  = 5'd13,
                  MTRANS_EXEC4   = 5'd14,
-                 MTRANS5_ABORT  = 5'd15,
+                 //MTRANS5_ABORT  = 5'd15,
                  MULT_PROC1     = 5'd16,  // first cycle, save pre fetch instruction
                  MULT_PROC2     = 5'd17,  // do multiplication
                  MULT_STORE     = 5'd19,  // save RdLo
-                 MULT_ACCUMU    = 5'd20,  // Accumulate add lower 32 bits
-                 SWAP_WRITE     = 5'd22,
-                 SWAP_WAIT1     = 5'd23,
-                 SWAP_WAIT2     = 5'd24,
-                 COPRO_WAIT     = 5'd25;
+                 MULT_ACCUMU    = 5'd20;  // Accumulate add lower 32 bits
+                 //SWAP_WRITE     = 5'd22,
+                 //SWAP_WAIT1     = 5'd23,
+                 //SWAP_WAIT2     = 5'd24,
+                 //COPRO_WAIT     = 5'd25;
 
 
 // ========================================================
 // Internal signals
 // ========================================================
 wire    [31:0]         instruction;
-wire                   instruction_iabt;        // abort flag, follows the instruction
-wire                   instruction_adex;        // address exception flag, follows the instruction
 wire    [31:0]         instruction_address;     // instruction virtual address, follows
                                                 // the instruction
-wire    [7:0]          instruction_iabt_status; // abort status, follows the instruction
 wire    [1:0]          instruction_sel;
 reg     [3:0]          itype;
 wire    [3:0]          opcode;
@@ -197,7 +155,6 @@ wire    [31:0]         imm32_nxt;
 wire    [4:0]          imm_shift_amount_nxt;
 wire                   shift_imm_zero_nxt;
 wire    [3:0]          condition_nxt;
-reg                    exclusive_exec_nxt;
 reg                    data_access_exec_nxt;
 wire                   shift_extend;
 
@@ -205,9 +162,6 @@ reg     [1:0]          barrel_shift_function_nxt;
 wire    [8:0]          alu_function_nxt;
 reg                    use_carry_in_nxt;
 reg     [1:0]          multiply_function_nxt;
-reg     [1:0]          status_bits_mode_nxt;
-reg                    status_bits_irq_mask_nxt;
-reg                    status_bits_firq_mask_nxt;
 
 reg     [1:0]          barrel_shift_amount_sel_nxt;
 reg     [1:0]          barrel_shift_data_sel_nxt;
@@ -216,8 +170,6 @@ reg     [1:0]          pc_sel_nxt;
 reg     [1:0]          byte_enable_sel_nxt;
 reg     [2:0]          status_bits_sel_nxt;
 reg     [2:0]          reg_write_sel_nxt;
-reg                    user_mode_regs_load_nxt;
-wire                   firq_not_user_mode_nxt;
 
 // ALU Function signals
 reg                    alu_swap_sel_nxt;
@@ -232,9 +184,6 @@ reg                    base_address_wen_nxt;
 reg                    pc_wen_nxt;
 reg     [3:0]          reg_bank_wsel_nxt;
 reg                    status_bits_flags_wen_nxt;
-reg                    status_bits_mode_wen_nxt;
-reg                    status_bits_irq_mask_wen_nxt;
-reg                    status_bits_firq_mask_wen_nxt;
 
 reg                    saved_current_instruction_wen;   // saved load instruction
 reg                    pre_fetch_instruction_wen;       // pre-fetch instruction
@@ -243,23 +192,10 @@ reg     [4:0]          control_state;
 reg     [4:0]          control_state_nxt;
 
 
-wire                   dabt;
-reg                    dabt_reg;
-reg                    dabt_reg_d1;
-reg                    iabt_reg;
-reg                    adex_reg;
-reg     [31:0]         abt_address_reg;
-reg     [7:0]          abt_status_reg;
 reg     [31:0]         saved_current_instruction;
-reg                    saved_current_instruction_iabt;          // access abort flag
-reg                    saved_current_instruction_adex;          // address exception
 reg     [31:0]         saved_current_instruction_address;       // virtual address of abort instruction
-reg     [7:0]          saved_current_instruction_iabt_status;   // status of abort instruction
 reg     [31:0]         pre_fetch_instruction;
-reg                    pre_fetch_instruction_iabt;              // access abort flag
-reg                    pre_fetch_instruction_adex;              // address exception
 reg     [31:0]         pre_fetch_instruction_address;           // virtual address of abort instruction
-reg     [7:0]          pre_fetch_instruction_iabt_status;       // status of abort instruction
 
 wire                   instruction_valid;
 wire                   instruction_execute;
@@ -273,17 +209,6 @@ wire   [31:0]          mtrans_base_reg_change;
 wire   [4:0]           mtrans_num_registers;
 wire                   use_saved_current_instruction;
 wire                   use_pre_fetch_instruction;
-wire                   interrupt;
-wire   [1:0]           interrupt_mode;
-wire   [2:0]           next_interrupt;
-reg                    irq;
-reg                    firq;
-wire                   firq_request;
-wire                   irq_request;
-wire                   swi_request;
-wire                   und_request;
-wire                   dabt_request;
-reg    [1:0]           copro_operation_nxt;
 reg                    mtrans_r15;
 reg                    mtrans_r15_nxt;
 reg                    restore_base_address;
@@ -297,34 +222,15 @@ wire                   regop_set_flags;
 // registers for output ports with non-zero initial values
 // ========================================================
 reg  [3:0]           condition_r;             // 4'he = al
-reg  [1:0]           status_bits_mode_r;     // SVC
-reg                  status_bits_irq_mask_r;
-reg                  status_bits_firq_mask_r;
 reg  [3:0]           address_sel_r;
 reg  [1:0]           pc_sel_r;
 reg                  pc_wen_r;
 
 assign o_condition              = condition_r;
-assign o_status_bits_mode       = status_bits_mode_r;
-assign o_status_bits_irq_mask   = status_bits_irq_mask_r;
-assign o_status_bits_firq_mask  = status_bits_firq_mask_r;
 assign o_address_sel            = address_sel_r;
 assign o_pc_sel                 = pc_sel_r;
 assign o_pc_wen                 = pc_wen_r;
 
-
-
-// ========================================================
-// Instruction Abort and Data Abort outputs
-// ========================================================
-
-assign o_iabt_trigger     = instruction_iabt && status_bits_mode_r == SVC && control_state == INT_WAIT1;
-assign o_iabt_address     = instruction_address;
-assign o_iabt_status      = instruction_iabt_status;
-
-assign o_dabt_trigger     = dabt_reg && !dabt_reg_d1;
-assign o_dabt_address     = abt_address_reg;
-assign o_dabt_status      = abt_status_reg;
 
 
 // ========================================================
@@ -346,17 +252,16 @@ assign use_saved_current_instruction = (instruction_execute &&
                             control_state == MTRANS_EXEC3  ||
                             control_state == MTRANS_EXEC3B ||
                             control_state == MTRANS_EXEC4  ||
-                            control_state == MTRANS5_ABORT ||
+                            //control_state == MTRANS5_ABORT ||
                             control_state == MULT_PROC1    ||
                             control_state == MULT_PROC2    ||
                             control_state == MULT_ACCUMU   ||
-                            control_state == MULT_STORE    ||
-                            control_state == INT_WAIT1     ||
-                            control_state == INT_WAIT2     ||
-                            control_state == SWAP_WRITE    ||
-                            control_state == SWAP_WAIT1    ||
-                            control_state == SWAP_WAIT2    ||
-                            control_state == COPRO_WAIT     ));
+                            control_state == MULT_STORE    ));
+                            //control_state == INT_WAIT1     ||
+                            //control_state == INT_WAIT2     ||
+                            //control_state == SWAP_WAIT1    ||
+                            //control_state == SWAP_WAIT2    ||
+                            //control_state == COPRO_WAIT     ));
 
 assign use_pre_fetch_instruction = control_state == PRE_FETCH_EXEC;
 
@@ -368,24 +273,8 @@ assign instruction_sel  =         use_saved_current_instruction  ? 2'd1 :  // sa
 assign instruction      =         instruction_sel == 2'd0 ? o_read_data               :
                                   instruction_sel == 2'd1 ? saved_current_instruction :
                                                             pre_fetch_instruction     ;
-
-// abort flag
-assign instruction_iabt =         instruction_sel == 2'd0 ? iabt_reg                       :
-                                  instruction_sel == 2'd1 ? saved_current_instruction_iabt :
-                                                            pre_fetch_instruction_iabt     ;
-
-assign instruction_address =      instruction_sel == 2'd0 ? abt_address_reg                   :
-                                  instruction_sel == 2'd1 ? saved_current_instruction_address :
+assign instruction_address =      instruction_sel == 2'd1 ? saved_current_instruction_address :
                                                             pre_fetch_instruction_address     ;
-
-assign instruction_iabt_status =  instruction_sel == 2'd0 ? abt_status_reg                        :
-                                  instruction_sel == 2'd1 ? saved_current_instruction_iabt_status :
-                                                            pre_fetch_instruction_iabt_status     ;
-
-// instruction address exception
-assign instruction_adex =         instruction_sel == 2'd0 ? adex_reg                       :
-                                  instruction_sel == 2'd1 ? saved_current_instruction_adex :
-                                                            pre_fetch_instruction_adex     ;
 
 // Instruction Decode - Order is important!
 always @*
@@ -415,8 +304,7 @@ assign o_rm_sel_nxt    = instruction[3:0];
 assign o_rn_sel_nxt    = branch  ? 4'd15              : // Use PC to calculate branch destination
                                    instruction[19:16] ;
 
-assign o_rds_sel_nxt   = control_state == SWAP_WRITE  ? instruction[3:0]   : // Rm gets written out to memory
-                         itype == MTRANS              ? mtrans_reg         :
+assign o_rds_sel_nxt   = itype == MTRANS              ? mtrans_reg         :
                          branch                       ? 4'd15              : // Update the PC
                          rds_use_rs                   ? instruction[11:8]  :
                                                         instruction[15:12] ;
@@ -436,7 +324,7 @@ assign rds_use_rs                = (itype == REGOP && !instruction[25] && instru
                                    (itype == MULT &&
                                     (control_state == MULT_PROC1  ||
                                      control_state == MULT_PROC2  ||
-                                     instruction_valid && !interrupt )) ;
+                                     instruction_valid )) ;
 assign branch                    = itype == BRANCH;
 assign opcode_compare =
             opcode == CMP ||
@@ -563,75 +451,13 @@ assign mtrans_num_registers =   {4'd0, instruction[15]} +
 // 4 x number of registers to be stored
 assign mtrans_base_reg_change = {25'd0, mtrans_num_registers, 2'd0};
 
-// ========================================================
-// Interrupts
-// ========================================================
-
-assign firq_request = firq && !i_execute_status_bits[26];
-assign irq_request  = irq  && !i_execute_status_bits[27];
-assign swi_request  = itype == SWI;
-assign dabt_request = dabt_reg;
-
-// copro15 and copro13 only supports reg trans opcodes
-// all other opcodes involving co-processors cause an
-// undefined instrution interrupt
-assign und_request  =   itype == CODTRANS ||
-                        itype == COREGOP  ||
-                      ( itype == CORTRANS && instruction[11:8] != 4'd15 );
-
-
-  // in order of priority !!
-  // Highest
-  // 1 Reset
-  // 2 Data Abort (including data TLB miss)
-  // 3 FIRQ
-  // 4 IRQ
-  // 5 Prefetch Abort (including prefetch TLB miss)
-  // 6 Undefined instruction, SWI
-  // Lowest
-assign next_interrupt = dabt_request     ? 3'd1 :  // Data Abort
-                        firq_request     ? 3'd2 :  // FIRQ
-                        irq_request      ? 3'd3 :  // IRQ
-                        instruction_adex ? 3'd4 :  // Address Exception
-                        instruction_iabt ? 3'd5 :  // PreFetch Abort, only triggered
-                                                   // if the instruction is used
-                        und_request      ? 3'd6 :  // Undefined Instruction
-                        swi_request      ? 3'd7 :  // SWI
-                                           3'd0 ;  // none
-
-        // SWI and undefined instructions do not cause an interrupt in the decode
-        // stage. They only trigger interrupts if they arfe executed, so the
-        // interrupt is triggered if the execute condition is met in the execute stage
-assign interrupt      = next_interrupt != 3'd0 &&
-                        next_interrupt != 3'd7 &&  // SWI
-                        next_interrupt != 3'd6 ;   // undefined interrupt
-
-
-assign interrupt_mode = next_interrupt == 3'd2 ? FIRQ :
-                        next_interrupt == 3'd3 ? IRQ  :
-                        next_interrupt == 3'd4 ? SVC  :
-                        next_interrupt == 3'd5 ? SVC  :
-                        next_interrupt == 3'd6 ? SVC  :
-                        next_interrupt == 3'd7 ? SVC  :
-                        next_interrupt == 3'd1 ? SVC  :
-                                                 USR  ;
-
-
-
 
 // ========================================================
 // Generate control signals
 // ========================================================
 always @(*)
     begin
-    // default mode
-    status_bits_mode_nxt            = i_execute_status_bits[1:0];   // change to mode in execute stage get reflected
-                                                                    // back to this stage automatically
-    status_bits_irq_mask_nxt        = status_bits_irq_mask_r;
-    status_bits_firq_mask_nxt       = status_bits_firq_mask_r;
-    exclusive_exec_nxt              = 1'd0;
     data_access_exec_nxt            = 1'd0;
-    copro_operation_nxt             = 'd0;
 
     // Save an instruction to use later
     saved_current_instruction_wen   = 1'd0;
@@ -650,8 +476,6 @@ always @(*)
     byte_enable_sel_nxt             = 'd0;
     status_bits_sel_nxt             = 'd0;
     reg_write_sel_nxt               = 'd0;
-    user_mode_regs_load_nxt         = 'd0;
-    o_user_mode_regs_store_nxt      = 'd0;
 
     // ALU Muxes
     alu_swap_sel_nxt                = 'd0;
@@ -662,16 +486,12 @@ always @(*)
 
     // default Flop Write Enable values
     write_data_wen_nxt              = 'd0;
-    copro_write_data_wen_nxt        = 'd0;
     base_address_wen_nxt            = 'd0;
     pc_wen_nxt                      = 'd1;
     reg_bank_wsel_nxt               = 'hF;  // Don't select any
     status_bits_flags_wen_nxt       = 'd0;
-    status_bits_mode_wen_nxt        = 'd0;
-    status_bits_irq_mask_wen_nxt    = 'd0;
-    status_bits_firq_mask_wen_nxt   = 'd0;
 
-    if ( instruction_valid && !interrupt ) begin
+    if ( instruction_valid ) begin
         if ( itype == REGOP ) begin
             if ( !opcode_compare ) begin
                 // Check is the load destination is the PC
@@ -870,17 +690,6 @@ always @(*)
             if ( !instruction[20] )  // Store
                 write_data_wen_nxt = 1'd1;
 
-            // LDM: load into user mode registers, when in priviledged mode
-            // Don't use mtrans_r15 here because its not loaded yet
-            //if ( {instruction[22],instruction[20],instruction[15]} == 3'b110 )
-            if ( {instruction[22:20],instruction[15]} == 4'b1010 )
-                user_mode_regs_load_nxt = 1'd1;
-
-            // SDM: store the user mode registers, when in priviledged mode
-            //if ( {instruction[22],instruction[20]} == 3'b10 )
-            if ( {instruction[22:20]} == 3'b100 )
-                o_user_mode_regs_store_nxt = 1'd1;
-
             // update the base register ?
             if ( instruction[21] )  // the W bit
                 reg_bank_wsel_nxt  = o_rn_sel_nxt;
@@ -898,53 +707,6 @@ always @(*)
                 multiply_function_nxt[1]    = 1'd1; // accumulate
         end
 
-
-        // swp - do read part first
-        if ( itype == SWAP ) begin
-            saved_current_instruction_wen   = 1'd1; // Save the memory access instruction to refer back to later
-            pc_wen_nxt                      = 1'd0; // hold current PC value
-            data_access_exec_nxt            = 1'd1; // indicate that its a data read or write,
-                                                    // rather than an instruction fetch
-            barrel_shift_data_sel_nxt       = 2'd2; // Shift value from Rm register
-            address_sel_nxt                 = 4'd4; // Rn
-            exclusive_exec_nxt              = 1'd1; // signal an exclusive access
-        end
-
-
-        // mcr & mrc - takes two cycles
-        if ( itype == CORTRANS && !und_request ) begin
-            saved_current_instruction_wen   = 1'd1; // Save the memory access instruction to refer back to later
-            pc_wen_nxt                      = 1'd0; // hold current PC value
-            address_sel_nxt                 = 4'd3; // pc  (not pc + 4)
-
-            if ( instruction[20] ) // MRC
-                copro_operation_nxt         = 2'd1;  // Register transfer from Co-Processor
-            else begin // MCR
-                 // Don't enable operation to Co-Processor until next period
-                 // So it gets the Rd value from the execution stage at the same time
-                copro_operation_nxt      = 2'd0;
-                copro_write_data_wen_nxt = 1'd1;  // Rd register value to co-processor
-            end
-        end
-
-
-        if ( itype == SWI || und_request ) begin
-            // save address of next instruction to Supervisor Mode LR
-            reg_write_sel_nxt               = 3'd1;            // pc -4
-            reg_bank_wsel_nxt               = 4'd14;  // LR
-
-            address_sel_nxt                 = 4'd2;            // interrupt_vector
-            pc_sel_nxt                      = 2'd2;            // interrupt_vector
-
-            status_bits_mode_nxt            = interrupt_mode;  // e.g. Supervisor mode
-            status_bits_mode_wen_nxt        = 1'd1;
-
-            // disable normal interrupts
-            status_bits_irq_mask_nxt        = 1'd1;
-            status_bits_irq_mask_wen_nxt    = 1'd1;
-        end
-
-
         if ( regop_set_flags ) begin
             status_bits_flags_wen_nxt = 1'd1;
 
@@ -952,55 +714,9 @@ always @(*)
             // Not allowed to use r15 for mul or lma instructions
             if ( instruction[15:12] == 4'd15 ) begin
                 status_bits_sel_nxt       = 3'd1; // alu out
-
-                // Priviledged mode? Then also update the other status bits
-                if ( i_execute_status_bits[1:0] != USR ) begin
-                    status_bits_mode_wen_nxt      = 1'd1;
-                    status_bits_irq_mask_wen_nxt  = 1'd1;
-                    status_bits_firq_mask_wen_nxt = 1'd1;
-                end
             end
         end
 
-    end
-
-    // Handle asynchronous interrupts.
-    // interrupts are processed only during execution states
-    // multicycle instructions must complete before the interrupt starts
-    // SWI, Address Exception and Undefined Instruction interrupts are only executed if the
-    // instruction that causes the interrupt is conditionally executed so
-    // its not handled here
-    if ( instruction_valid && interrupt &&  next_interrupt != 3'd6 ) begin
-        // Save the interrupt causing instruction to refer back to later
-        // This also saves the instruction abort vma and status, in the case of an
-        // instruction abort interrupt
-        saved_current_instruction_wen   = 1'd1;
-
-        // save address of next instruction to Supervisor Mode LR
-        // Address Exception ?
-        if ( next_interrupt == 3'd4 )
-            reg_write_sel_nxt               = 3'd7;            // pc
-        else
-            reg_write_sel_nxt               = 3'd1;            // pc -4
-
-        reg_bank_wsel_nxt               = 4'd14;           // LR
-
-        address_sel_nxt                 = 4'd2;            // interrupt_vector
-        pc_sel_nxt                      = 2'd2;            // interrupt_vector
-
-        status_bits_mode_nxt            = interrupt_mode;  // e.g. Supervisor mode
-        status_bits_mode_wen_nxt        = 1'd1;
-
-        // disable normal interrupts
-        status_bits_irq_mask_nxt        = 1'd1;
-        status_bits_irq_mask_wen_nxt    = 1'd1;
-
-        // disable fast interrupts
-        if ( next_interrupt == 3'd2 ) begin // FIRQ
-            
-            status_bits_firq_mask_nxt        = 1'd1;
-            status_bits_firq_mask_wen_nxt    = 1'd1;
-        end
     end
 
 
@@ -1027,16 +743,12 @@ always @(*)
         // load a byte
         if ( itype == TRANS && instruction[22] )
             alu_out_sel_nxt             = 4'd3;  // zero_extend8
-
-        if ( !dabt ) begin // dont load data there is an abort on the data read
-            
-            // Check if the load destination is the PC
-            if (instruction[15:12]  == 4'd15) begin
-                pc_sel_nxt      = 2'd1; // alu_out
-                address_sel_nxt = 4'd1; // alu_out
-            end else
-                reg_bank_wsel_nxt = instruction[15:12];
-        end
+        // Check if the load destination is the PC
+        if (instruction[15:12]  == 4'd15) begin
+            pc_sel_nxt      = 2'd1; // alu_out
+            address_sel_nxt = 4'd1; // alu_out
+        end else
+            reg_bank_wsel_nxt = instruction[15:12];
     end
 
 
@@ -1054,18 +766,8 @@ always @(*)
 
             if ( !instruction[20] ) // Store
                 write_data_wen_nxt = 1'd1;
-
-            // LDM: load into user mode registers, when in priviledged mode
-            //if ( {instruction[22],instruction[20],mtrans_r15} == 3'b110 )
-            if ( {instruction[22:20],mtrans_r15} == 4'b1010 )
-                user_mode_regs_load_nxt = 1'd1;
-
-            // SDM: store the user mode registers, when in priviledged mode
-            //if ( {instruction[22],instruction[20]} == 2'b10 )
-            if ( {instruction[22:20]} == 3'b100 )
-                o_user_mode_regs_store_nxt = 1'd1;
-            end
         end
+    end
 
 
     // third cycle of multiple load or store
@@ -1077,24 +779,11 @@ always @(*)
         barrel_shift_data_sel_nxt   = 2'd1;  // load word from memory
 
         // Load or Store
-        if ( instruction[20] ) begin // Load
-            // Can never be loading the PC in this state, as the PC is always
-            // the last register in the set to be loaded
-            if ( !dabt )
+        if ( instruction[20] ) // Load
                 reg_bank_wsel_nxt = mtrans_reg_d2;
-            end
         else // Store
             write_data_wen_nxt = 1'd1;
-
-        // LDM: load into user mode registers, when in priviledged mode
-        if ( {instruction[22],instruction[20],mtrans_r15} == 3'b110 )
-            user_mode_regs_load_nxt = 1'd1;
-
-        // SDM: store the user mode registers, when in priviledged mode
-        if ( {instruction[22],instruction[20]} == 2'b10 )
-            o_user_mode_regs_store_nxt = 1'd1;
-        end
-
+    end
 
         // second or fourth cycle of multiple load or store
     if ( control_state == MTRANS_EXEC3 && instruction_execute ) begin
@@ -1104,17 +793,8 @@ always @(*)
 
         // Can never be loading the PC in this state, as the PC is always
         // the last register in the set to be loaded
-        if ( instruction[20] && !dabt ) // Load
+        if ( instruction[20] ) // Load
             reg_bank_wsel_nxt = mtrans_reg_d2;
-
-        // LDM: load into user mode registers, when in priviledged mode
-        if ( {instruction[22],instruction[20],mtrans_r15} == 3'b110 )
-            user_mode_regs_load_nxt = 1'd1;
-
-        // SDM: store the user mode registers, when in priviledged mode
-        //if ( {instruction[22:20]} == 3'b100 )
-        if ( {instruction[22],instruction[20]} == 2'b10 )
-            o_user_mode_regs_store_nxt = 1'd1;
     end
 
     // state is used for LMD/STM of a single register
@@ -1126,74 +806,32 @@ always @(*)
         address_sel_nxt             = 4'd3;  // pc  (not pc + 4)
         pc_wen_nxt                  = 1'd0;  // hold current PC value
 
-        // LDM: load into user mode registers, when in priviledged mode
-        if ( {instruction[22],instruction[20],mtrans_r15} == 3'b110 )
-            user_mode_regs_load_nxt = 1'd1;
-
-        // SDM: store the user mode registers, when in priviledged mode
-        if ( {instruction[22],instruction[20]} == 2'b10 )
-            o_user_mode_regs_store_nxt = 1'd1;
     end
 
     if ( control_state == MTRANS_EXEC4 ) begin
         barrel_shift_data_sel_nxt   = 2'd1;  // load word from memory
         if ( instruction[20] ) begin// Load
-            if (!dabt) begin// dont overwrite registers or status if theres a data abort
-                if ( mtrans_reg_d2 == 4'd15 ) begin// load new value into PC
-                    address_sel_nxt = 4'd1; // alu_out - read instructions using new PC value
-                    pc_sel_nxt      = 2'd1; // alu_out
-                    pc_wen_nxt      = 1'd1; // write PC
+            if ( mtrans_reg_d2 == 4'd15 ) begin// load new value into PC
+                address_sel_nxt = 4'd1; // alu_out - read instructions using new PC value
+                pc_sel_nxt      = 2'd1; // alu_out
+                pc_wen_nxt      = 1'd1; // write PC
 
-                    // ldm with S bit and pc: the Status bits are updated
-                    // Node this must be done only at the end
-                    // so the register set is the set in the mode before it
-                    // gets changed.
-                    if ( instruction[22] ) begin
-                         status_bits_sel_nxt           = 3'd1; // alu out
-                         status_bits_flags_wen_nxt     = 1'd1;
-
-                         // Can't change the mode or mask bits in User mode
-                         if ( i_execute_status_bits[1:0] != USR ) begin
-                            status_bits_mode_wen_nxt      = 1'd1;
-                            status_bits_irq_mask_wen_nxt  = 1'd1;
-                            status_bits_firq_mask_wen_nxt = 1'd1;
-                        end
-                    end
-                end else begin
-                    reg_bank_wsel_nxt = mtrans_reg_d2;
+                // ldm with S bit and pc: the Status bits are updated
+                // Node this must be done only at the end
+                // so the register set is the set in the mode before it
+                // gets changed.
+                if ( instruction[22] ) begin
+                     status_bits_sel_nxt           = 3'd1; // alu out
+                     status_bits_flags_wen_nxt     = 1'd1;
                 end
+            end else begin
+                reg_bank_wsel_nxt = mtrans_reg_d2;
             end
         end
-
-           // we have a data abort interrupt
-        if ( dabt ) begin
-            pc_wen_nxt = 1'd0;  // hold current PC value
-        end
-
-        // LDM: load into user mode registers, when in priviledged mode
-        if ( {instruction[22],instruction[20],mtrans_r15} == 3'b110 )
-            user_mode_regs_load_nxt = 1'd1;
-
-        // SDM: store the user mode registers, when in priviledged mode
-        if ( {instruction[22],instruction[20]} == 2'b10 )
-            o_user_mode_regs_store_nxt = 1'd1;
     end
 
 
-    // state is for when a data abort interrupt is triggered during an LDM
-    if ( control_state == MTRANS5_ABORT )
-        begin
-        // Restore the Base Address, if the base register is included in the
-        // list of registers being loaded
-        if (restore_base_address) // LDM with base address in register list
-            begin
-            reg_write_sel_nxt = 3'd6;                        // write base_register
-            reg_bank_wsel_nxt  = instruction[19:16];         // to Rn
-            end
-        end
-
-
-        // Multiply or Multiply-Accumulate
+    // Multiply or Multiply-Accumulate
     if ( control_state == MULT_PROC1 ) begin
         // Save the next instruction to execute later
         // Do this even if this instruction does not execute because of Condition
@@ -1233,117 +871,13 @@ always @(*)
     end
 
         // Add lower 32 bits to multiplication product
-    if ( control_state == MULT_ACCUMU )
-        begin
+    if ( control_state == MULT_ACCUMU ) begin
         multiply_function_nxt = o_multiply_function;
         pc_wen_nxt            = 1'd0;  // hold current PC value
         address_sel_nxt       = 4'd3;  // pc  (not pc + 4)
-        end
-
-    // swp - do write request in 2nd cycle
-    if ( control_state == SWAP_WRITE && instruction_execute )
-        begin
-        barrel_shift_data_sel_nxt       = 2'd2; // Shift value from Rm register
-        address_sel_nxt                 = 4'd4; // Rn
-        write_data_wen_nxt              = 1'd1;
-        data_access_exec_nxt            = 1'd1; // indicate that its a data read or write,
-                                                // rather than an instruction fetch
-
-        if ( instruction[22] )
-            byte_enable_sel_nxt = 2'd1;         // Save byte
-
-        if ( instruction_execute )                         // conditional execution state
-            pc_wen_nxt                  = 1'd0; // hold current PC value
-
-        // Save the next instruction to execute later
-        // Do this even if this instruction does not execute because of Condition
-        pre_fetch_instruction_wen   = 1'd1;
-
-        end
-
-
-    // swp - receive read response in 3rd cycle
-    if ( control_state == SWAP_WAIT1 )
-        begin
-        barrel_shift_data_sel_nxt   = 2'd1;  // load word from memory
-        barrel_shift_amount_sel_nxt = 2'd3;  // shift by address[1:0] x 8
-
-        // shift needed
-        if ( i_execute_address[1:0] != 2'd0 )
-            barrel_shift_function_nxt = ROR;
-
-        if ( instruction_execute ) // conditional execution state
-            begin
-            address_sel_nxt             = 4'd3; // pc  (not pc + 4)
-            pc_wen_nxt                  = 1'd0; // hold current PC value
-            end
-
-        // load a byte
-        if ( instruction[22] )
-            alu_out_sel_nxt = 4'd3;  // zero_extend8
-
-        if ( !dabt )
-            begin
-            // Check is the load destination is the PC
-            if ( instruction[15:12]  == 4'd15 )
-                begin
-                pc_sel_nxt      = 2'd1; // alu_out
-                address_sel_nxt = 4'd1; // alu_out
-                end
-            else
-                reg_bank_wsel_nxt = instruction[15:12];
-            end
-        end
-
-    // 1 cycle delay for Co-Processor Register access
-    if ( control_state == COPRO_WAIT && instruction_execute )
-        begin
-        pre_fetch_instruction_wen = 1'd1;
-
-        if ( instruction[20] ) // mrc instruction
-            begin
-            // Check is the load destination is the PC
-            if ( instruction[15:12]  == 4'd15 )
-                begin
-                // If r15 is specified for <Rd>, the condition code flags are
-                // updated instead of a general-purpose register.
-                status_bits_sel_nxt           = 3'd3;  // i_copro_data
-                status_bits_flags_wen_nxt     = 1'd1;
-
-                // Can't change these in USR mode
-                if ( i_execute_status_bits[1:0] != USR )
-                   begin
-                   status_bits_mode_wen_nxt      = 1'd1;
-                   status_bits_irq_mask_wen_nxt  = 1'd1;
-                   status_bits_firq_mask_wen_nxt = 1'd1;
-                   end
-                end
-            else
-                reg_bank_wsel_nxt = instruction[15:12];
-
-            reg_write_sel_nxt = 3'd5;     // i_copro_data
-            end
-        else // mcr instruction
-            begin
-            copro_operation_nxt      = 2'd2;  // Register transfer to Co-Processor
-            end
-        end
-
-
-    // Have just changed the status_bits mode but this
-    // creates a 1 cycle gap with the old mode
-    // coming back from execute into instruction_decode
-    // So squash that old mode value during this
-    // cycle of the interrupt transition
-    if ( control_state == INT_WAIT1 )
-        status_bits_mode_nxt            = status_bits_mode_r;   // Supervisor mode
+    end
 
 end
-
-
-// Speed up the long path from u_decode/o_read_data to u_register_bank/r8_firq
-// This pre-encodes the firq_s3 signal thats used in u_register_bank
-assign firq_not_user_mode_nxt = !user_mode_regs_load_nxt && status_bits_mode_nxt == FIRQ;
 
 
 // ========================================================
@@ -1359,8 +893,6 @@ assign instruction_valid = (control_state == EXECUTE || control_state == PRE_FET
                     // ////because condition was false then act like you're in the execute state
                     // (!instruction_execute && (control_state == PC_STALL1    ||
                     //                           control_state == MEM_WAIT1    ||
-                    //                           control_state == COPRO_WAIT   ||
-                    //                           control_state == SWAP_WRITE   ||
                     //                           control_state == MULT_PROC1   ||
                     //                           control_state == MTRANS_EXEC1 ||
                     //                           control_state == MTRANS_EXEC3 ||
@@ -1380,24 +912,15 @@ assign instruction_valid = (control_state == EXECUTE || control_state == PRE_FET
         control_state_nxt = INT_WAIT2;
     else if ( control_state == INT_WAIT2 )     
         control_state_nxt = EXECUTE;
-    else if ( control_state == COPRO_WAIT )    
-        control_state_nxt = PRE_FETCH_EXEC;
     else if ( control_state == PC_STALL1 )     
         control_state_nxt = PC_STALL2;
     else if ( control_state == PC_STALL2 )     
         control_state_nxt = EXECUTE;
-    else if ( control_state == SWAP_WRITE )    
-        control_state_nxt = SWAP_WAIT1;
-    else if ( control_state == SWAP_WAIT1 )    
-        control_state_nxt = SWAP_WAIT2;
     else if ( control_state == MULT_STORE )    
-        control_state_nxt = PRE_FETCH_EXEC;
-    else if ( control_state == MTRANS5_ABORT ) 
         control_state_nxt = PRE_FETCH_EXEC;
     else if ( control_state == MEM_WAIT1 )     
         control_state_nxt = MEM_WAIT2;
-    else if ( control_state == MEM_WAIT2  ||
-              control_state == SWAP_WAIT2) begin
+    else if ( control_state == MEM_WAIT2) begin
         if ( write_pc ) // writing to the PC!!
             control_state_nxt = PC_STALL1;
         else
@@ -1416,9 +939,7 @@ assign instruction_valid = (control_state == EXECUTE || control_state == PRE_FET
     else if ( control_state == MTRANS_EXEC3B )    
         control_state_nxt = MTRANS_EXEC4;
     else if ( control_state == MTRANS_EXEC4  ) begin
-        if ( dabt ) // data abort
-            control_state_nxt = MTRANS5_ABORT;
-        else if (write_pc) // writing to the PC!!
+        if (write_pc) // writing to the PC!!
             control_state_nxt = PC_STALL1;
         else
             control_state_nxt = PRE_FETCH_EXEC;
@@ -1455,16 +976,6 @@ assign instruction_valid = (control_state == EXECUTE || control_state == PRE_FET
 
         if ( itype == MULT )
             control_state_nxt = MULT_PROC1;
-
-        if ( itype == SWAP )
-            control_state_nxt = SWAP_WRITE;
-
-        if ( itype == CORTRANS && !und_request )
-            control_state_nxt = COPRO_WAIT;
-
-         // interrupt overrides everything else so its last
-        if ( interrupt )
-            control_state_nxt = INT_WAIT1;
     end
 end
 
@@ -1477,18 +988,10 @@ always @ ( posedge i_clk  or posedge i_rst)
     if(i_rst) begin
         o_read_data                 <= 'b0;
         o_read_data_alignment       <= 'd0;
-        abt_address_reg             <= 'd0;
-        iabt_reg                    <= 'd0;
-        adex_reg                    <= 'd0;
-        abt_status_reg              <= 'd0;
-        status_bits_mode_r          <= 2'b11;
-        status_bits_irq_mask_r      <= 1'd1;
-        status_bits_firq_mask_r     <= 1'd1;
         o_imm32                     <= 'd0;
         o_imm_shift_amount          <= 'd0;
         o_shift_imm_zero            <= 'd0;
         condition_r                 <=  4'he;
-        o_exclusive_exec            <= 'd0;
         o_data_access_exec          <= 'd0;
         o_rm_sel                    <= 'd0;
         o_rds_sel                   <= 'd0;
@@ -1499,30 +1002,17 @@ always @ ( posedge i_clk  or posedge i_rst)
         o_alu_function              <= 'd0;
         o_use_carry_in              <= 'd0;
         o_multiply_function         <= 'd0;
-        o_interrupt_vector_sel      <= 'd0;
         address_sel_r               <= 4'd2;
         pc_sel_r                    <= 2'd2;
         o_byte_enable_sel           <= 'd0;
         o_status_bits_sel           <= 'd0;
         o_reg_write_sel             <= 'd0;
-        o_user_mode_regs_load       <= 'd0;
-        o_firq_not_user_mode        <= 'd0;
         o_write_data_wen            <= 'd0;
         o_base_address_wen          <= 'd0;
         pc_wen_r                    <= 1'd1;
         o_reg_bank_wsel             <= 'd0;
         o_reg_bank_wen              <= 'd0;
         o_status_bits_flags_wen     <= 'd0;
-        o_status_bits_mode_wen      <= 'd0;
-        o_status_bits_irq_mask_wen  <= 'd0;
-        o_status_bits_firq_mask_wen <= 'd0;
-        o_copro_opcode1             <= 'd0;
-        o_copro_opcode2             <= 'd0;
-        o_copro_crn                 <= 'd0;
-        o_copro_crm                 <= 'd0;
-        o_copro_num                 <= 'd0;
-        o_copro_operation           <= 'd0;
-        o_copro_write_data_wen      <= 'd0;
         mtrans_r15                  <= 'd0;
         restore_base_address        <= 'd0;
         control_state               <= RST_WAIT1;
@@ -1533,19 +1023,11 @@ always @ ( posedge i_clk  or posedge i_rst)
         begin
         o_read_data                 <= i_read_data;
         o_read_data_alignment       <= {i_execute_address[1:0], 3'd0};
-        abt_address_reg             <= i_execute_address;
-        iabt_reg                    <= i_iabt;
-        adex_reg                    <= i_adex;
-        abt_status_reg              <= i_abt_status;
-        status_bits_mode_r          <= status_bits_mode_nxt;
-        status_bits_irq_mask_r      <= status_bits_irq_mask_nxt;
-        status_bits_firq_mask_r     <= status_bits_firq_mask_nxt;
         o_imm32                     <= imm32_nxt;
         o_imm_shift_amount          <= imm_shift_amount_nxt;
         o_shift_imm_zero            <= shift_imm_zero_nxt;
 
         condition_r                 <= instruction_valid ? condition_nxt : condition_r;
-        o_exclusive_exec            <= exclusive_exec_nxt;
         o_data_access_exec          <= data_access_exec_nxt;
 
         o_rm_sel                    <= o_rm_sel_nxt;
@@ -1557,31 +1039,18 @@ always @ ( posedge i_clk  or posedge i_rst)
         o_alu_function              <= alu_function_nxt;
         o_use_carry_in              <= use_carry_in_nxt;
         o_multiply_function         <= multiply_function_nxt;
-        o_interrupt_vector_sel      <= next_interrupt;
         address_sel_r               <= address_sel_nxt;
         pc_sel_r                    <= pc_sel_nxt;
         o_byte_enable_sel           <= byte_enable_sel_nxt;
         o_status_bits_sel           <= status_bits_sel_nxt;
         o_reg_write_sel             <= reg_write_sel_nxt;
-        o_user_mode_regs_load       <= user_mode_regs_load_nxt;
-        o_firq_not_user_mode        <= firq_not_user_mode_nxt;
         o_write_data_wen            <= write_data_wen_nxt;
         o_base_address_wen          <= base_address_wen_nxt;
         pc_wen_r                    <= pc_wen_nxt;
         o_reg_bank_wsel             <= reg_bank_wsel_nxt;
         o_reg_bank_wen              <= decode ( reg_bank_wsel_nxt );
         o_status_bits_flags_wen     <= status_bits_flags_wen_nxt;
-        o_status_bits_mode_wen      <= status_bits_mode_wen_nxt;
-        o_status_bits_irq_mask_wen  <= status_bits_irq_mask_wen_nxt;
-        o_status_bits_firq_mask_wen <= status_bits_firq_mask_wen_nxt;
 
-        o_copro_opcode1             <= instruction[23:21];
-        o_copro_opcode2             <= instruction[7:5];
-        o_copro_crn                 <= instruction[19:16];
-        o_copro_crm                 <= instruction[3:0];
-        o_copro_num                 <= instruction[11:8];
-        o_copro_operation           <= copro_operation_nxt;
-        o_copro_write_data_wen      <= copro_write_data_wen_nxt;
         mtrans_r15                  <= mtrans_r15_nxt;
         restore_base_address        <= restore_base_address_nxt;
         control_state               <= control_state_nxt;
@@ -1594,15 +1063,9 @@ always @ ( posedge i_clk  or posedge i_rst)
 always @ ( posedge i_clk or posedge i_rst)
     if(i_rst) begin
       saved_current_instruction              <= 'd0;
-      saved_current_instruction_iabt         <= 'd0;
-      saved_current_instruction_adex         <= 'd0;
       saved_current_instruction_address      <= 'd0;
-      saved_current_instruction_iabt_status  <= 'd0;
       pre_fetch_instruction                  <= 'd0;
-      pre_fetch_instruction_iabt             <= 'd0;
-      pre_fetch_instruction_adex             <= 'd0;
       pre_fetch_instruction_address          <= 'd0;
-      pre_fetch_instruction_iabt_status      <= 'd0;
     end else
     if ( !i_fetch_stall )
         begin
@@ -1614,58 +1077,19 @@ always @ ( posedge i_clk or posedge i_rst)
         if      (itype == MTRANS)
             begin
             saved_current_instruction              <= mtrans_instruction_nxt;
-            saved_current_instruction_iabt         <= instruction_iabt;
-            saved_current_instruction_adex         <= instruction_adex;
             saved_current_instruction_address      <= instruction_address;
-            saved_current_instruction_iabt_status  <= instruction_iabt_status;
             end
         else if (saved_current_instruction_wen)
             begin
             saved_current_instruction              <= instruction;
-            saved_current_instruction_iabt         <= instruction_iabt;
-            saved_current_instruction_adex         <= instruction_adex;
             saved_current_instruction_address      <= instruction_address;
-            saved_current_instruction_iabt_status  <= instruction_iabt_status;
             end
 
         if      (pre_fetch_instruction_wen)
         begin
             pre_fetch_instruction                  <= o_read_data;
-            pre_fetch_instruction_iabt             <= iabt_reg;
-            pre_fetch_instruction_adex             <= adex_reg;
-            pre_fetch_instruction_address          <= abt_address_reg;
-            pre_fetch_instruction_iabt_status      <= abt_status_reg;
         end
     end
-
-
-
-always @ ( posedge i_clk or posedge i_rst)
-    if(i_rst) begin
-      irq <= 'd0;
-      firq <= 'd0;
-      dabt_reg <= 'd0;
-      dabt_reg_d1 <= 'd0;
-    end else
-    if ( !i_fetch_stall )
-        begin
-        irq   <= i_irq;
-        firq  <= i_firq;
-
-        if ( control_state == INT_WAIT1 && status_bits_mode_r == SVC )
-            begin
-            dabt_reg  <= 1'd0;
-            end
-        else
-            begin
-            dabt_reg  <= dabt_reg || i_dabt;
-            end
-
-        dabt_reg_d1  <= dabt_reg;
-        end
-
-assign dabt = dabt_reg || i_dabt;
-
 endmodule
 
 

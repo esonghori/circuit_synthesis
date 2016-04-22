@@ -46,15 +46,6 @@ module a23_register_bank (
 input                       i_clk,
 input                       i_rst,
 input                       i_fetch_stall,
-
-input       [1:0]           i_mode_idec,            // user, supervisor, irq_idec, firq_idec etc.
-                                                    // Used for register writes
-input       [1:0]           i_mode_exec,            // 1 periods delayed from i_mode_idec
-                                                    // Used for register reads
-input       [3:0]           i_mode_rds_exec,        // Use one-hot version specifically for rds, 
-                                                    // includes i_user_mode_regs_store
-input                       i_user_mode_regs_load,
-input                       i_firq_not_user_mode,
 input       [3:0]           i_rm_sel,
 input       [3:0]           i_rds_sel,
 input       [3:0]           i_rn_sel,
@@ -66,8 +57,6 @@ input       [23:0]          i_pc,                   // program counter [25:2]
 input       [31:0]          i_reg,
 
 input       [3:0]           i_status_bits_flags,
-input                       i_status_bits_irq_mask,
-input                       i_status_bits_firq_mask,
 
 output      [31:0]          o_rm,
 output reg  [31:0]          o_rs,
@@ -81,7 +70,6 @@ output      [31:0]          o_pc
 `include "a23_functions.vh"
 
 
-// User Mode Registers
 reg  [31:0] r0  ;
 reg  [31:0] r1  ;
 reg  [31:0] r2  ;
@@ -126,47 +114,6 @@ wire  [31:0] r12_rds;
 wire  [31:0] r13_rds;
 wire  [31:0] r14_rds;
 
-// Supervisor Mode Registers
-reg  [31:0] r13_svc;
-reg  [31:0] r14_svc;
-
-// Interrupt Mode Registers
-reg  [31:0] r13_irq;
-reg  [31:0] r14_irq;
-
-// Fast Interrupt Mode Registers
-reg  [31:0] r8_firq  ;
-reg  [31:0] r9_firq  ;
-reg  [31:0] r10_firq ;
-reg  [31:0] r11_firq ;
-reg  [31:0] r12_firq ;
-reg  [31:0] r13_firq ;
-reg  [31:0] r14_firq ;
-
-wire        usr_exec;
-wire        svc_exec;
-wire        irq_exec;
-wire        firq_exec;
-
-wire        usr_idec;
-wire        svc_idec;
-wire        irq_idec;
-wire        firq_idec;
-
-    // Write Enables from execute stage
-assign usr_idec  =  i_user_mode_regs_load || i_mode_idec == USR;
-assign svc_idec  = !i_user_mode_regs_load && i_mode_idec == SVC;
-assign irq_idec  = !i_user_mode_regs_load && i_mode_idec == IRQ;
-
-// pre-encoded in decode stage to speed up long path
-assign firq_idec = i_firq_not_user_mode;
-
-    // Read Enables from stage 1 (fetch)
-assign usr_exec  = i_mode_exec == USR;
-assign svc_exec  = i_mode_exec == SVC;
-assign irq_exec  = i_mode_exec == IRQ;
-assign firq_exec = i_mode_exec == FIRQ;
-
 
 // ========================================================
 // Register Update
@@ -186,19 +133,8 @@ always @ ( posedge i_clk or posedge i_rst)
         r10      <= 'd0;
         r11      <= 'd0;
         r12      <= 'd0;
-        r8_firq  <= 'd0;
-        r9_firq  <= 'd0;
-        r10_firq <= 'd0;
-        r11_firq <= 'd0;
-        r12_firq <= 'd0;
         r13      <= 'd0;
         r14      <= 'd0;
-        r13_svc  <= 'd0;
-        r14_svc  <= 'd0;
-        r13_irq  <= 'd0;
-        r14_irq  <= 'd0;
-        r13_firq <= 'd0;
-        r14_firq <= 'd0;
         r15      <= 24'h0;
     end else
     if (!i_fetch_stall)
@@ -211,32 +147,14 @@ always @ ( posedge i_clk or posedge i_rst)
         r5       <=  i_reg_bank_wen[5 ]              ? i_reg : r5;  
         r6       <=  i_reg_bank_wen[6 ]              ? i_reg : r6;  
         r7       <=  i_reg_bank_wen[7 ]              ? i_reg : r7;  
-        
-        r8       <= (i_reg_bank_wen[8 ] && !firq_idec) ? i_reg : r8;  
-        r9       <= (i_reg_bank_wen[9 ] && !firq_idec) ? i_reg : r9;  
-        r10      <= (i_reg_bank_wen[10] && !firq_idec) ? i_reg : r10; 
-        r11      <= (i_reg_bank_wen[11] && !firq_idec) ? i_reg : r11; 
-        r12      <= (i_reg_bank_wen[12] && !firq_idec) ? i_reg : r12; 
-        
-        r8_firq  <= (i_reg_bank_wen[8 ] &&  firq_idec) ? i_reg : r8_firq;
-        r9_firq  <= (i_reg_bank_wen[9 ] &&  firq_idec) ? i_reg : r9_firq;
-        r10_firq <= (i_reg_bank_wen[10] &&  firq_idec) ? i_reg : r10_firq;
-        r11_firq <= (i_reg_bank_wen[11] &&  firq_idec) ? i_reg : r11_firq;
-        r12_firq <= (i_reg_bank_wen[12] &&  firq_idec) ? i_reg : r12_firq;
-
-        r13      <= (i_reg_bank_wen[13] &&  usr_idec)  ? i_reg : r13;
-        r14      <= (i_reg_bank_wen[14] &&  usr_idec)  ? i_reg : r14;
-     
-        r13_svc  <= (i_reg_bank_wen[13] &&  svc_idec)  ? i_reg : r13_svc;
-        r14_svc  <= (i_reg_bank_wen[14] &&  svc_idec)  ? i_reg : r14_svc;   
-       
-        r13_irq  <= (i_reg_bank_wen[13] &&  irq_idec)  ? i_reg : r13_irq;
-        r14_irq  <= (i_reg_bank_wen[14] &&  irq_idec)  ? i_reg : r14_irq;       
-      
-        r13_firq <= (i_reg_bank_wen[13] &&  firq_idec) ? i_reg : r13_firq;
-        r14_firq <= (i_reg_bank_wen[14] &&  firq_idec) ? i_reg : r14_firq;  
-        
-        r15      <=  i_pc_wen                          ?  i_pc : r15;
+        r8       <=  i_reg_bank_wen[8 ]              ? i_reg : r8;  
+        r9       <=  i_reg_bank_wen[9 ]              ? i_reg : r9;  
+        r10      <=  i_reg_bank_wen[10]              ? i_reg : r10; 
+        r11      <=  i_reg_bank_wen[11]              ? i_reg : r11; 
+        r12      <=  i_reg_bank_wen[12]              ? i_reg : r12; 
+        r13      <=  i_reg_bank_wen[13]              ? i_reg : r13;
+        r14      <=  i_reg_bank_wen[14]              ? i_reg : r14;
+        r15      <=  i_pc_wen                        ?  i_pc : r15;
         end
     
     
@@ -251,55 +169,38 @@ assign r4_out = r4;
 assign r5_out = r5;
 assign r6_out = r6;
 assign r7_out = r7;
+assign r8_out  = r8;
+assign r9_out  = r9;
+assign r10_out = r10;
+assign r11_out = r11;
+assign r12_out = r12;
+assign r13_out = r13; 
+assign r14_out = r14;
 
-assign r8_out  = firq_exec ? r8_firq  : r8;
-assign r9_out  = firq_exec ? r9_firq  : r9;
-assign r10_out = firq_exec ? r10_firq : r10;
-assign r11_out = firq_exec ? r11_firq : r11;
-assign r12_out = firq_exec ? r12_firq : r12;
-
-assign r13_out = usr_exec ? r13      :
-                 svc_exec ? r13_svc  :
-                 irq_exec ? r13_irq  :
-                          r13_firq ;
-                       
-assign r14_out = usr_exec ? r14      :
-                 svc_exec ? r14_svc  :
-                 irq_exec ? r14_irq  :
-                          r14_firq ;
- 
 
 assign r15_out_rm     = { i_status_bits_flags, 
-                          i_status_bits_irq_mask, 
-                          i_status_bits_firq_mask, 
+                          1'b1, 
+                          1'b1, 
                           r15, 
-                          i_mode_exec};
+                          2'b0};
 
 assign r15_out_rm_nxt = { i_status_bits_flags, 
-                          i_status_bits_irq_mask, 
-                          i_status_bits_firq_mask, 
+                          1'b1, 
+                          1'b1, 
                           i_pc, 
-                          i_mode_exec};
+                          2'b0};
                       
 assign r15_out_rn     = {6'd0, r15, 2'd0};
 
 
 // rds outputs
-assign r8_rds  = i_mode_rds_exec[OH_FIRQ] ? r8_firq  : r8;
-assign r9_rds  = i_mode_rds_exec[OH_FIRQ] ? r9_firq  : r9;
-assign r10_rds = i_mode_rds_exec[OH_FIRQ] ? r10_firq : r10;
-assign r11_rds = i_mode_rds_exec[OH_FIRQ] ? r11_firq : r11;
-assign r12_rds = i_mode_rds_exec[OH_FIRQ] ? r12_firq : r12;
-
-assign r13_rds = i_mode_rds_exec[OH_USR]  ? r13      :
-                 i_mode_rds_exec[OH_SVC]  ? r13_svc  :
-                 i_mode_rds_exec[OH_IRQ]  ? r13_irq  :
-                                            r13_firq ;
-                       
-assign r14_rds = i_mode_rds_exec[OH_USR]  ? r14      :
-                 i_mode_rds_exec[OH_SVC]  ? r14_svc  :
-                 i_mode_rds_exec[OH_IRQ]  ? r14_irq  :
-                                            r14_firq ;
+assign r8_rds  = r8;
+assign r9_rds  = r9;
+assign r10_rds = r10;
+assign r11_rds = r11;
+assign r12_rds = r12;
+assign r13_rds = r13;
+assign r14_rds = r14;
 
 // ========================================================
 // Program Counter out

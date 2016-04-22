@@ -50,22 +50,15 @@ input                       i_rst,
 input       [31:0]          i_read_data,
 input       [4:0]           i_read_data_alignment,  // 2 LSBs of address in [4:3], appended 
                                                     // with 3 zeros
-input       [31:0]          i_copro_read_data,      // From Co-Processor, to either Register 
-                                                    // or Memory
 input                       i_data_access_exec,     // from Instruction Decode stage
                                                     // high means the memory access is a read 
                                                     // read or write, low for instruction
-
-output reg  [31:0]          o_copro_write_data,
 output reg  [31:0]          o_write_data,
 output wire [31:0]          o_address,
-output reg                  o_adex,           // Address Exception
 output reg                  o_address_valid,  // Prevents the reset address value being a 
                                                     // wishbone access
 output      [31:0]          o_address_nxt,          // un-registered version of address to the 
                                                     // cache rams address ports
-output reg                  o_priviledged,    // Priviledged access
-output reg                  o_exclusive,      // swap access
 output reg                  o_write_enable,
 output reg  [3:0]           o_byte_enable,
 output reg                  o_data_access,    // To Fetch stage. high = data fetch, 
@@ -78,14 +71,10 @@ output                      o_multiply_done,
 // Control signals from Instruction Decode stage
 // --------------------------------------------------
 input                       i_fetch_stall,          // stall all stages of the cpu at the same time
-input      [1:0]            i_status_bits_mode,
-input                       i_status_bits_irq_mask,
-input                       i_status_bits_firq_mask,
 input      [31:0]           i_imm32,
 input      [4:0]            i_imm_shift_amount,
 input                       i_shift_imm_zero,
 input      [3:0]            i_condition,
-input                       i_exclusive_exec,       // swap access
 input                       i_use_carry_in,         // e.g. add with carry instruction
 
 input      [3:0]            i_rm_sel,
@@ -99,28 +88,18 @@ input      [1:0]            i_barrel_shift_data_sel,
 input      [1:0]            i_barrel_shift_function,
 input      [8:0]            i_alu_function,
 input      [1:0]            i_multiply_function,
-input      [2:0]            i_interrupt_vector_sel,
 input      [3:0]            i_address_sel,
 input      [1:0]            i_pc_sel,
 input      [1:0]            i_byte_enable_sel,
 input      [2:0]            i_status_bits_sel,
 input      [2:0]            i_reg_write_sel,
-input                       i_user_mode_regs_load,
-input                       i_user_mode_regs_store_nxt,
-input                       i_firq_not_user_mode,
-
 input                       i_write_data_wen,
 input                       i_base_address_wen,     // save LDM base address register, 
                                                     // in case of data abort
 input                       i_pc_wen,
 input      [14:0]           i_reg_bank_wen,
 input      [3:0]            i_reg_bank_wsel,
-input                       i_status_bits_flags_wen,
-input                       i_status_bits_mode_wen,
-input                       i_status_bits_irq_mask_wen,
-input                       i_status_bits_firq_mask_wen,
-input                       i_copro_write_data_wen
-
+input                       i_status_bits_flags_wen
 );
 
 `include "a23_localparams.vh"
@@ -146,7 +125,6 @@ wire [31:0]         pc;
 wire [31:0]         pc_nxt;
 wire [31:0]         branch_pc_nxt;
 wire                write_enable_nxt;
-wire [31:0]         interrupt_vector;
 wire [7:0]          shift_amount;
 wire [31:0]         barrel_shift_in;
 wire [31:0]         barrel_shift_out;
@@ -155,21 +133,6 @@ wire                barrel_shift_carry_alu;
 
 wire [3:0]          status_bits_flags_nxt;
 reg  [3:0]          status_bits_flags;
-wire [1:0]          status_bits_mode_nxt;
-wire [1:0]          status_bits_mode_nr;
-reg  [1:0]          status_bits_mode;
-                    // raw rs select
-wire [1:0]          status_bits_mode_rds_nxt;
-wire [1:0]          status_bits_mode_rds_nr;
-reg  [1:0]          status_bits_mode_rds;
-                    // one-hot encoded rs select
-wire [3:0]          status_bits_mode_rds_oh_nxt;
-reg  [3:0]          status_bits_mode_rds_oh;
-wire                status_bits_mode_rds_oh_update;
-wire                status_bits_irq_mask_nxt;
-reg                 status_bits_irq_mask;
-wire                status_bits_firq_mask_nxt;
-reg                 status_bits_firq_mask;
 
 wire                execute;           // high when condition execution is true
 wire [31:0]         reg_write_nxt;
@@ -181,25 +144,17 @@ wire [1:0]          multiply_flags;
 reg  [31:0]         base_address;    // Saves base address during LDM instruction in 
                                            // case of data abort
 
-wire                priviledged_nxt;      
-wire                priviledged_update;
 wire                address_update;
 wire                base_address_update;
 wire                write_data_update;
-wire                copro_write_data_update;
 wire                byte_enable_update;
 wire                data_access_update;
 wire                write_enable_update;
-wire                exclusive_update;
 wire                status_bits_flags_update;
-wire                status_bits_mode_update;
-wire                status_bits_irq_mask_update;
-wire                status_bits_firq_mask_update;
 wire [1:0]          status_bits_out;
 
 wire [31:0]         alu_out_pc_filtered;
 wire [31:0]         branch_address_nxt;
-wire                adex_nxt;
 
 wire                carry_in;
 
@@ -209,60 +164,23 @@ reg  [31:0]         address_r;
 // ========================================================
 // Status Bits in PC register
 // ========================================================
-assign status_bits_out = (i_status_bits_mode_wen && i_status_bits_sel == 3'd1 && execute) ? 
-                            alu_out[1:0] : status_bits_mode ;
-
-
 assign o_status_bits = {   status_bits_flags,           // 31:28
-                           status_bits_irq_mask,        // 7
-                           status_bits_firq_mask,       // 6
+                           1'b1,                        // 7
+                           1'b1,                        // 6
                            24'd0,
-                           status_bits_out};          // 1:0 = mode
+                           2'b0};          // 1:0 = mode
 
 // ========================================================
 // Status Bits Select
 // ========================================================
 assign status_bits_flags_nxt     = i_status_bits_sel == 3'd0 ? alu_flags                           :
                                    i_status_bits_sel == 3'd1 ? alu_out          [31:28]            :
-                                   i_status_bits_sel == 3'd3 ? i_copro_read_data[31:28]            :
+                                   //i_status_bits_sel == 3'd3 ? i_copro_read_data[31:28]            :
                                    //  update flags after a multiply operation
                                    i_status_bits_sel == 3'd4 ? { multiply_flags, status_bits_flags[1:0] } :
                                    // regops that do not change the overflow flag
                                    i_status_bits_sel == 3'd5 ? { alu_flags[3:1], status_bits_flags[0] } :
                                                                4'b1111 ;
-
-assign status_bits_mode_nxt      = i_status_bits_sel == 3'd0 ? i_status_bits_mode       :
-                                   i_status_bits_sel == 3'd5 ? i_status_bits_mode       :
-                                   i_status_bits_sel == 3'd1 ? alu_out            [1:0] :
-                                                               i_copro_read_data  [1:0] ;
-
-
-// Used for the Rds output of register_bank - this special version of
-// status_bits_mode speeds up the critical path from status_bits_mode through the
-// register_bank, barrel_shifter and alu. It moves a mux needed for the
-// i_user_mode_regs_store_nxt signal back into the previous stage -
-// so its really part of the decode stage even though the logic is right here
-// In addition the signal is one-hot encoded to further speed up the logic
-// Raw version is also kept for ram-based register bank implementation.
-
-assign status_bits_mode_rds_nxt  = i_user_mode_regs_store_nxt ? USR                  :
-                                   status_bits_mode_update    ? status_bits_mode_nxt :
-                                                                status_bits_mode     ;
-
-assign status_bits_mode_rds_oh_nxt    = oh_status_bits_mode(status_bits_mode_rds_nxt);
-
-
-assign status_bits_irq_mask_nxt  = i_status_bits_sel == 3'd0 ? i_status_bits_irq_mask      :
-                                   i_status_bits_sel == 3'd5 ? i_status_bits_irq_mask      :
-                                   i_status_bits_sel == 3'd1 ? alu_out                [27] :
-                                                               i_copro_read_data      [27] ;
-                            
-assign status_bits_firq_mask_nxt = i_status_bits_sel == 3'd0 ? i_status_bits_firq_mask     :
-                                   i_status_bits_sel == 3'd5 ? i_status_bits_firq_mask     :
-                                   i_status_bits_sel == 3'd1 ? alu_out                [26] :
-                                                               i_copro_read_data      [26] ;
-
-
 
 // ========================================================
 // Adders
@@ -291,29 +209,6 @@ assign barrel_shift_in = i_barrel_shift_data_sel == 2'd0 ? i_imm32       :
                                                            rm            ;
                             
 // ========================================================
-// Interrupt vector Select
-// ========================================================
-
-assign interrupt_vector = // Reset vector
-                          (i_interrupt_vector_sel == 3'd0) ? 32'h00000000 :  
-                          // Data abort interrupt vector                 
-                          (i_interrupt_vector_sel == 3'd1) ? 32'h00000010 :
-                          // Fast interrupt vector  
-                          (i_interrupt_vector_sel == 3'd2) ? 32'h0000001c :
-                          // Regular interrupt vector
-                          (i_interrupt_vector_sel == 3'd3) ? 32'h00000018 :
-                          // Prefetch abort interrupt vector
-                          (i_interrupt_vector_sel == 3'd5) ? 32'h0000000c :
-                          // Undefined instruction interrupt vector
-                          (i_interrupt_vector_sel == 3'd6) ? 32'h00000004 :
-                          // Software (SWI) interrupt vector
-                          (i_interrupt_vector_sel == 3'd7) ? 32'h00000008 :
-                          // Default is the address exception interrupt
-                                                             32'h00000014 ;
-
-
-
-// ========================================================
 // Address Select
 // ========================================================
 
@@ -329,17 +224,13 @@ assign branch_address_nxt = (!execute) ? pc_minus4 : alu_out_pc_filtered;
 assign o_address_nxt = //(!execute)              ? pc_plus4              : 
                        (i_address_sel == 4'd0) ? pc_plus4              :
                        (i_address_sel == 4'd1) ? alu_out_pc_filtered   :
-                       (i_address_sel == 4'd2) ? interrupt_vector      :
+                       //(i_address_sel == 4'd2) ? interrupt_vector      :
                        (i_address_sel == 4'd3) ? pc                    :
                        (i_address_sel == 4'd4) ? rn                    :
                        (i_address_sel == 4'd5) ? address_plus4         :  // MTRANS address incrementer
                        (i_address_sel == 4'd6) ? alu_plus4             :  // MTRANS decrement after
                        (i_address_sel == 4'd7) ? rn_plus4              :  // MTRANS increment before
                                                  branch_address_nxt    ;
-
-// Data accesses use 32-bit address space, but instruction
-// accesses are restricted to 26 bit space
-assign adex_nxt      = |o_address_nxt[31:26] && !i_data_access_exec;
 
 // ========================================================
 // Program Counter Select
@@ -352,7 +243,7 @@ assign branch_pc_nxt = (!execute) ? pc_minus4 : alu_out;
 assign pc_nxt = //(!execute)       ? pc_plus4              :
                 i_pc_sel == 2'd0 ? pc_plus4              :
                 i_pc_sel == 2'd1 ? alu_out               :
-                i_pc_sel == 2'd2 ? interrupt_vector      :
+                //i_pc_sel == 2'd2 ? interrupt_vector      :
                                    branch_pc_nxt         ;
 
 
@@ -363,17 +254,17 @@ wire [31:0] save_int_pc;
 wire [31:0] save_int_pc_m4;
 
 assign save_int_pc    = { status_bits_flags, 
-                          status_bits_irq_mask, 
-                          status_bits_firq_mask, 
+                          1'b1, 
+                          1'b1, 
                           pc[25:2], 
-                          status_bits_mode      };
+                          2'b0      };
 
 
 assign save_int_pc_m4 = { status_bits_flags, 
-                          status_bits_irq_mask, 
-                          status_bits_firq_mask, 
+                          1'b1, 
+                          1'b1, 
                           pc_minus4[25:2], 
-                          status_bits_mode      };
+                          2'b0      };
 
 
 assign reg_write_nxt = i_reg_write_sel == 3'd0 ? alu_out               :
@@ -382,7 +273,7 @@ assign reg_write_nxt = i_reg_write_sel == 3'd0 ? alu_out               :
                        // to update Rd at the end of Multiplication
                        i_reg_write_sel == 3'd2 ? multiply_out          :
                        i_reg_write_sel == 3'd3 ? o_status_bits         :
-                       i_reg_write_sel == 3'd5 ? i_copro_read_data     :  // mrc
+                       // i_reg_write_sel == 3'd5 ? i_copro_read_data     :  // mrc
                        i_reg_write_sel == 3'd6 ? base_address          :
                                                  save_int_pc           ;  
 
@@ -424,14 +315,6 @@ assign reg_bank_wsel = {{4{~execute}} | i_reg_bank_wsel};
 
 
 // ========================================================
-// Priviledged output flag
-// ========================================================
-// Need to look at status_bits_mode_nxt so switch to priviledged mode
-// at the same time as assert interrupt vector address
-assign priviledged_nxt  = ( i_status_bits_mode_wen ? status_bits_mode_nxt : status_bits_mode ) != USR ;
-
-
-// ========================================================
 // Write Enable
 // ========================================================
 // This must be de-asserted when execute is fault
@@ -442,68 +325,37 @@ assign write_enable_nxt = execute && i_write_data_wen;
 // Register Update
 // ========================================================
 
-assign priviledged_update              = !i_fetch_stall;       
 assign data_access_update              = !i_fetch_stall;// && execute;
 assign write_enable_update             = !i_fetch_stall;
 assign write_data_update               = !i_fetch_stall;//&& execute && i_write_data_wen;
-assign exclusive_update                = !i_fetch_stall;// && execute;
 assign address_update                  = !i_fetch_stall;
 assign byte_enable_update              = !i_fetch_stall;//&& execute && i_write_data_wen;
-assign copro_write_data_update         = !i_fetch_stall;//&& execute && i_copro_write_data_wen;
 
 assign base_address_update             = !i_fetch_stall && execute && i_base_address_wen; 
 assign status_bits_flags_update        = !i_fetch_stall && execute && i_status_bits_flags_wen;
-assign status_bits_mode_update         = !i_fetch_stall && execute && i_status_bits_mode_wen;
-assign status_bits_mode_rds_oh_update  = !i_fetch_stall;
-assign status_bits_irq_mask_update     = !i_fetch_stall && execute && i_status_bits_irq_mask_wen;
-assign status_bits_firq_mask_update    = !i_fetch_stall && execute && i_status_bits_firq_mask_wen;
-
-assign status_bits_mode_rds_nr         =  status_bits_mode_rds_oh_update ? status_bits_mode_rds_nxt :
-                                                                           status_bits_mode_rds     ;
-
-assign status_bits_mode_nr             =  status_bits_mode_update        ? status_bits_mode_nxt     :
-                                                                           status_bits_mode         ;
 
 always @( posedge i_clk or posedge i_rst)
     if(i_rst) begin
-      o_priviledged           <= 'd0;
-      o_exclusive             <= 'd0;
       o_data_access           <= 'd0;
       o_write_enable          <= 'd0;
       o_write_data            <= 'd0;
       address_r               <= 'd0;
-      o_adex                  <= 'd0;
       o_address_valid         <= 1'd1;
       o_byte_enable           <= 'd0;
-      o_copro_write_data      <= 'd0;
       base_address            <= 'd0;
       status_bits_flags       <= 'd0;
-      status_bits_mode        <= SVC;
-      status_bits_mode_rds_oh <= 1'd1 << OH_SVC;
-      status_bits_mode_rds    <= 'd0;
-      status_bits_irq_mask    <= 1'd1;
-      status_bits_firq_mask   <= 1'd1;
     end else begin
     // remove extra signals
-    o_priviledged           <= 'd0;//priviledged_update             ? priviledged_nxt              : o_priviledged;
-    o_exclusive             <= 'd0;//exclusive_update               ? i_exclusive_exec             : o_exclusive;
     o_data_access           <= 'd0;//data_access_update             ? i_data_access_exec           : o_data_access;
     o_write_enable          <= write_enable_update            ? write_enable_nxt             : o_write_enable;
     o_write_data            <= write_data_update              ? write_data_nxt               : o_write_data; 
-    address_r               <= address_update                 ? o_address_nxt                : address_r;    
-    o_adex                  <= 'd0;//address_update                 ? adex_nxt                     : o_adex;    
+    address_r               <= address_update                 ? o_address_nxt                : address_r;
     o_address_valid         <= 1'd1;//address_update                 ? 1'd1                         : o_address_valid;
     o_byte_enable           <= byte_enable_update             ? byte_enable_nxt              : o_byte_enable;
-    o_copro_write_data      <= 'd0;//copro_write_data_update        ? write_data_nxt               : o_copro_write_data; 
 
     base_address            <= base_address_update            ? rn                           : base_address;    
 
     status_bits_flags       <= status_bits_flags_update       ? status_bits_flags_nxt        : status_bits_flags;
-    status_bits_mode        <= status_bits_mode_nr;
-    status_bits_mode_rds_oh <= status_bits_mode_rds_oh_update ? status_bits_mode_rds_oh_nxt  : status_bits_mode_rds_oh;
-    status_bits_mode_rds    <= status_bits_mode_rds_nr;
-    status_bits_irq_mask    <= 1'd1;//status_bits_irq_mask_update    ? status_bits_irq_mask_nxt     : status_bits_irq_mask;
-    status_bits_firq_mask   <= 1'd1;//status_bits_firq_mask_update   ? status_bits_firq_mask_nxt    : status_bits_firq_mask;
     end
 
 assign o_address = address_r;
@@ -577,16 +429,7 @@ a23_register_bank u_register_bank(
     .i_reg_bank_wen          ( reg_bank_wen              ),
     .i_pc                    ( pc_nxt[25:2]              ),
     .i_reg                   ( reg_write_nxt             ),
-    .i_mode_idec             ( i_status_bits_mode        ),
-    .i_mode_exec             ( status_bits_mode          ),
     .i_status_bits_flags     ( status_bits_flags         ),
-    .i_status_bits_irq_mask  ( status_bits_irq_mask      ),
-    .i_status_bits_firq_mask ( status_bits_firq_mask     ),
-    // pre-encoded in decode stage to speed up long path
-    .i_firq_not_user_mode    ( i_firq_not_user_mode      ),
-    // use one-hot version for speed, combine with i_user_mode_regs_store
-    .i_mode_rds_exec         ( status_bits_mode_rds_oh   ),  
-    .i_user_mode_regs_load   ( i_user_mode_regs_load     ),
     .o_rm                    ( rm                        ),
     .o_rs                    ( rs                        ),
     .o_rd                    ( rd                        ),

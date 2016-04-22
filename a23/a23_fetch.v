@@ -53,8 +53,6 @@ input       [31:0]          i_address_nxt,      // un-registered version of addr
 input       [31:0]          i_write_data,
 input                       i_write_enable,
 output       [31:0]         o_read_data,
-input                       i_priviledged,
-input                       i_exclusive,        // high for read part of swap access
 input       [3:0]           i_byte_enable,
 input                       i_data_access,      // high for data petch, low for instruction fetch
 input                       i_cache_enable,     // cache enable
