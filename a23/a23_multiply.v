@@ -144,13 +144,15 @@ end
 
   always @ ( posedge i_clk or posedge i_rst)
   if (i_rst) begin
-    count           <= 'd0;
     product         <= 'd0;
+    count           <= 'd0;
     o_done          <= 'd0;
-  end else if ( !i_fetch_stall  && enable && i_execute)
-  begin
+  end else if ( !i_fetch_stall  && enable)
+  begin 
+    if(i_execute) begin
+          product         <= product_nxt;
+    end
     count           <= count_nxt;
-    product         <= product_nxt;
     o_done          <= count == 6'd31;
   end
 

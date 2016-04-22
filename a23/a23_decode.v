@@ -1010,11 +1010,8 @@ always @(*)
         // Save the next instruction to execute later
         // Do this even if this instruction does not execute because of Condition
         pre_fetch_instruction_wen   = 1'd1;
-
-        if ( instruction_execute ) begin// conditional execution state
-            address_sel_nxt             = 4'd3; // pc  (not pc + 4)
-            pc_wen_nxt                  = 1'd0; // hold current PC value
-        end
+        address_sel_nxt             = 4'd3; // pc  (not pc + 4)
+        pc_wen_nxt                  = 1'd0; // hold current PC value
     end
 
 
@@ -1197,33 +1194,30 @@ always @(*)
 
 
         // Multiply or Multiply-Accumulate
-    if ( control_state == MULT_PROC1 && instruction_execute )
-        begin
+    if ( control_state == MULT_PROC1 ) begin
         // Save the next instruction to execute later
         // Do this even if this instruction does not execute because of Condition
         pre_fetch_instruction_wen   = 1'd1;
         pc_wen_nxt                  = 1'd0;  // hold current PC value
         multiply_function_nxt       = o_multiply_function;
-        end
+    end
 
 
         // Multiply or Multiply-Accumulate
         // Do multiplication
         // Wait for done or accumulate signal
-    if ( control_state == MULT_PROC2 )
-        begin
+    if ( control_state == MULT_PROC2 ) begin
         // Save the next instruction to execute later
         // Do this even if this instruction does not execute because of Condition
         pc_wen_nxt              = 1'd0;  // hold current PC value
         address_sel_nxt         = 4'd3;  // pc  (not pc + 4)
         multiply_function_nxt   = o_multiply_function;
-        end
+    end 
 
 
     // Save RdLo
     // always last cycle of all multiply or multiply accumulate operations
-    if ( control_state == MULT_STORE )
-        begin
+    if ( control_state == MULT_STORE ) begin
         reg_write_sel_nxt     = 3'd2; // multiply_out
         multiply_function_nxt = o_multiply_function;
 
@@ -1232,12 +1226,11 @@ always @(*)
         else  // 64-bit / Long
             reg_bank_wsel_nxt      = instruction[15:12]; // RdLo
 
-        if ( instruction[20] )  // the 'S' bit
-            begin
+        if ( instruction[20] ) begin // the 'S' bit
             status_bits_sel_nxt       = 3'd4; // { multiply_flags, status_bits_flags[1:0] }
             status_bits_flags_wen_nxt = 1'd1;
-            end
         end
+    end
 
         // Add lower 32 bits to multiplication product
     if ( control_state == MULT_ACCUMU )
@@ -1430,10 +1423,7 @@ assign instruction_valid = (control_state == EXECUTE || control_state == PRE_FET
         else
             control_state_nxt = PRE_FETCH_EXEC;
     end else if ( control_state == MULT_PROC1 ) begin
-        if (!instruction_execute)
-            control_state_nxt = PRE_FETCH_EXEC;
-        else
-            control_state_nxt = MULT_PROC2;
+        control_state_nxt = MULT_PROC2;
     end else if ( control_state == MULT_PROC2 ) begin
         if ( i_multiply_done )
             if      ( o_multiply_function[1] )  // Accumulate ?
