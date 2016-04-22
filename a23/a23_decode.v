@@ -197,7 +197,6 @@ reg     [31:0]         pre_fetch_instruction;
 reg     [31:0]         pre_fetch_instruction_address;           // virtual address of abort instruction
 
 wire                   instruction_valid;
-wire                   instruction_execute;
 
 reg     [3:0]          mtrans_reg;              // the current register being accessed as part of STM/LDM
 reg     [3:0]          mtrans_reg_d1;     // delayed by 1 period
@@ -243,24 +242,17 @@ assign o_pc_wen                 = pc_wen_r;
 // But if the instruction does not execute because of the
 // condition, then need to select the next instruction to
 // decode
-assign use_saved_current_instruction = (instruction_execute &&
-                          ( control_state == MEM_WAIT1     ||
-                            control_state == MEM_WAIT2     ||
-                            control_state == MTRANS_EXEC1  ||
-                            control_state == MTRANS_EXEC2  ||
-                            control_state == MTRANS_EXEC3  ||
-                            control_state == MTRANS_EXEC3B ||
-                            control_state == MTRANS_EXEC4  ||
-                            //control_state == MTRANS5_ABORT ||
-                            control_state == MULT_PROC1    ||
-                            control_state == MULT_PROC2    ||
-                            control_state == MULT_ACCUMU   ||
-                            control_state == MULT_STORE    ));
-                            //control_state == INT_WAIT1     ||
-                            //control_state == INT_WAIT2     ||
-                            //control_state == SWAP_WAIT1    ||
-                            //control_state == SWAP_WAIT2    ||
-                            //control_state == COPRO_WAIT     ));
+assign use_saved_current_instruction = ( control_state == MEM_WAIT1     ||
+                                         control_state == MEM_WAIT2     ||
+                                         control_state == MTRANS_EXEC1  ||
+                                         control_state == MTRANS_EXEC2  ||
+                                         control_state == MTRANS_EXEC3  ||
+                                         control_state == MTRANS_EXEC3B ||
+                                         control_state == MTRANS_EXEC4  ||
+                                         control_state == MULT_PROC1    ||
+                                         control_state == MULT_PROC2    ||
+                                         control_state == MULT_ACCUMU   ||
+                                         control_state == MULT_STORE    );
 
 assign use_pre_fetch_instruction = control_state == PRE_FETCH_EXEC;
 
@@ -757,15 +749,13 @@ always @(*)
         // Do this even if this instruction does not execute because of Condition
         pre_fetch_instruction_wen   = 1'd1;
 
-        if ( instruction_execute ) begin // conditional execution state
-            address_sel_nxt             = 4'd5;  // o_address
-            pc_wen_nxt                  = 1'd0;  // hold current PC value
-            data_access_exec_nxt        = 1'd1;  // indicate that its a data read or write,
-                                                 // rather than an instruction fetch
+        address_sel_nxt             = 4'd5;  // o_address
+        pc_wen_nxt                  = 1'd0;  // hold current PC value
+        data_access_exec_nxt        = 1'd1;  // indicate that its a data read or write,
+                                             // rather than an instruction fetch
 
-            if ( !instruction[20] ) // Store
-                write_data_wen_nxt = 1'd1;
-        end
+        if ( !instruction[20] ) // Store
+            write_data_wen_nxt = 1'd1;
     end
 
 
@@ -785,7 +775,7 @@ always @(*)
     end
 
         // second or fourth cycle of multiple load or store
-    if ( control_state == MTRANS_EXEC3 && instruction_execute ) begin
+    if ( control_state == MTRANS_EXEC3 ) begin
         address_sel_nxt             = 4'd3; // pc  (not pc + 4)
         pc_wen_nxt                  = 1'd0;  // hold current PC value
         barrel_shift_data_sel_nxt   = 2'd1;  // load word from memory
@@ -797,7 +787,7 @@ always @(*)
     end
 
     // state is used for LMD/STM of a single register
-    if ( control_state == MTRANS_EXEC3B && instruction_execute ) begin
+    if ( control_state == MTRANS_EXEC3B ) begin
         // Save the next instruction to execute later
         // Do this even if this instruction does not execute because of Condition
         pre_fetch_instruction_wen   = 1'd1;
@@ -883,19 +873,7 @@ end
 // Next State Logic
 // ========================================================
 
-// this replicates the current value of the execute signal in the execute stage
-assign instruction_execute = 1'b1;//conditional_execute ( condition_r, i_execute_status_bits[31:28] );
-
 assign instruction_valid = (control_state == EXECUTE || control_state == PRE_FETCH_EXEC);
-                    // ||
-                    // ////when last instruction was multi-cycle instruction but did not execute
-                    // ////because condition was false then act like you're in the execute state
-                    // (!instruction_execute && (control_state == PC_STALL1    ||
-                    //                           control_state == MEM_WAIT1    ||
-                    //                           control_state == MULT_PROC1   ||
-                    //                           control_state == MTRANS_EXEC1 ||
-                    //                           control_state == MTRANS_EXEC3 ||
-                    //                           control_state == MTRANS_EXEC3B  ) );
 
 
  always @* begin
@@ -953,8 +931,6 @@ assign instruction_valid = (control_state == EXECUTE || control_state == PRE_FET
     end else if ( control_state == MULT_ACCUMU ) begin
         control_state_nxt = MULT_STORE;
     end else if ( instruction_valid ) begin
-        // default is to stay in execute state, or to move into this
-        // state from a conditional execute state
         control_state_nxt = EXECUTE;
 
         if ( mem_op )  // load or store word or byte
