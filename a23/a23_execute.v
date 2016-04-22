@@ -144,6 +144,7 @@ wire [31:0]         rd;
 wire [31:0]         rn;
 wire [31:0]         pc;
 wire [31:0]         pc_nxt;
+wire [31:0]         branch_pc_nxt;
 wire                write_enable_nxt;
 wire [31:0]         interrupt_vector;
 wire [7:0]          shift_amount;
@@ -197,6 +198,7 @@ wire                status_bits_firq_mask_update;
 wire [1:0]          status_bits_out;
 
 wire [31:0]         alu_out_pc_filtered;
+wire [31:0]         branch_address_nxt;
 wire                adex_nxt;
 
 wire                carry_in;
@@ -310,6 +312,7 @@ assign interrupt_vector = // Reset vector
                                                              32'h00000014 ;
 
 
+
 // ========================================================
 // Address Select
 // ========================================================
@@ -318,9 +321,12 @@ assign interrupt_vector = // Reset vector
 // generating the next address to fetch
 assign alu_out_pc_filtered = pc_wen && i_pc_sel == 2'd1 ? pcf(alu_out) : alu_out;
 
+
+assign branch_address_nxt = (!execute) ? pc_minus4 : alu_out_pc_filtered;
+
 // if current instruction does not execute because it does not meet the condition
 // then address advances to next instruction
-assign o_address_nxt = (!execute)              ? pc_plus4              : 
+assign o_address_nxt = //(!execute)              ? pc_plus4              : 
                        (i_address_sel == 4'd0) ? pc_plus4              :
                        (i_address_sel == 4'd1) ? alu_out_pc_filtered   :
                        (i_address_sel == 4'd2) ? interrupt_vector      :
@@ -328,7 +334,8 @@ assign o_address_nxt = (!execute)              ? pc_plus4              :
                        (i_address_sel == 4'd4) ? rn                    :
                        (i_address_sel == 4'd5) ? address_plus4         :  // MTRANS address incrementer
                        (i_address_sel == 4'd6) ? alu_plus4             :  // MTRANS decrement after
-                                                 rn_plus4              ;  // MTRANS increment before
+                       (i_address_sel == 4'd7) ? rn_plus4              :  // MTRANS increment before
+                                                 branch_address_nxt    ;
 
 // Data accesses use 32-bit address space, but instruction
 // accesses are restricted to 26 bit space
@@ -337,12 +344,16 @@ assign adex_nxt      = |o_address_nxt[31:26] && !i_data_access_exec;
 // ========================================================
 // Program Counter Select
 // ========================================================
+
+assign branch_pc_nxt = (!execute) ? pc_minus4 : alu_out;
+
 // If current instruction does not execute because it does not meet the condition
 // then PC advances to next instruction
-assign pc_nxt = (!execute)       ? pc_plus4              :
+assign pc_nxt = //(!execute)       ? pc_plus4              :
                 i_pc_sel == 2'd0 ? pc_plus4              :
                 i_pc_sel == 2'd1 ? alu_out               :
-                                   interrupt_vector      ;
+                i_pc_sel == 2'd2 ? interrupt_vector      :
+                                   branch_pc_nxt         ;
 
 
 // ========================================================

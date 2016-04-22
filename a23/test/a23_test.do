@@ -22,9 +22,12 @@ sim:/a23_testbench/u_a23_gc_main/u_a23_core/u_execute/u_register_bank/r15_out_rn
 sim:/a23_testbench/u_a23_gc_main/u_a23_mem/p_mem \
 sim:/a23_testbench/u_a23_gc_main/u_a23_mem/g_mem \
 sim:/a23_testbench/u_a23_gc_main/u_a23_mem/e_mem \
+sim:/a23_testbench/u_a23_gc_main/u_a23_mem/stack_mem \
 sim:/a23_testbench/u_a23_gc_main/u_a23_mem/out_mem \
-sim:/a23_testbench/u_a23_gc_main/u_a23_mem/stack_mem
-
+sim:/a23_testbench/u_a23_gc_main/u_a23_core/u_decode/instruction \
+sim:/a23_testbench/u_a23_gc_main/u_a23_core/u_decode/control_state \
+sim:/a23_testbench/u_a23_gc_main/u_a23_core/u_decode/instruction_valid \
+sim:/a23_testbench/u_a23_gc_main/u_a23_core/u_decode/instruction_execute
 
 run -all
 exit
