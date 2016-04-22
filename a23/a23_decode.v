@@ -292,9 +292,6 @@ reg                    restore_base_address_nxt;
 wire                   regop_set_flags;
 
 
-reg                    instruction_execute_wen;
-reg                    instruction_execute_reg;
-
 
 // ========================================================
 // registers for output ports with non-zero initial values
@@ -1363,105 +1360,89 @@ assign firq_not_user_mode_nxt = !user_mode_regs_load_nxt && status_bits_mode_nxt
 // this replicates the current value of the execute signal in the execute stage
 assign instruction_execute = 1'b1;//conditional_execute ( condition_r, i_execute_status_bits[31:28] );
 
-assign instruction_valid = (control_state == EXECUTE || control_state == PRE_FETCH_EXEC)
-                    ||
-                    ////when last instruction was multi-cycle instruction but did not execute
-                    ////because condition was false then act like you're in the execute state
-                    (!instruction_execute && (control_state == PC_STALL1    ||
-                                              control_state == MEM_WAIT1    ||
-                                              control_state == COPRO_WAIT   ||
-                                              control_state == SWAP_WRITE   ||
-                                              control_state == MULT_PROC1   ||
-                                              control_state == MTRANS_EXEC1 ||
-                                              control_state == MTRANS_EXEC3 ||
-                                              control_state == MTRANS_EXEC3B  ) );
+assign instruction_valid = (control_state == EXECUTE || control_state == PRE_FETCH_EXEC);
+                    // ||
+                    // ////when last instruction was multi-cycle instruction but did not execute
+                    // ////because condition was false then act like you're in the execute state
+                    // (!instruction_execute && (control_state == PC_STALL1    ||
+                    //                           control_state == MEM_WAIT1    ||
+                    //                           control_state == COPRO_WAIT   ||
+                    //                           control_state == SWAP_WRITE   ||
+                    //                           control_state == MULT_PROC1   ||
+                    //                           control_state == MTRANS_EXEC1 ||
+                    //                           control_state == MTRANS_EXEC3 ||
+                    //                           control_state == MTRANS_EXEC3B  ) );
 
 
- always @*
-    begin
+ always @* begin
     // default is to hold the current state
     control_state_nxt = control_state;
 
     // Note: The order is important here
-    if ( control_state == RST_WAIT1 )     control_state_nxt = RST_WAIT2;
-    if ( control_state == RST_WAIT2 )     control_state_nxt = EXECUTE;
-    if ( control_state == INT_WAIT1 )     control_state_nxt = INT_WAIT2;
-    if ( control_state == INT_WAIT2 )     control_state_nxt = EXECUTE;
-    if ( control_state == COPRO_WAIT )    control_state_nxt = PRE_FETCH_EXEC;
-    if ( control_state == PC_STALL1 )     control_state_nxt = PC_STALL2;
-    if ( control_state == PC_STALL2 )     control_state_nxt = EXECUTE;
-    if ( control_state == SWAP_WRITE )    control_state_nxt = SWAP_WAIT1;
-    if ( control_state == SWAP_WAIT1 )    control_state_nxt = SWAP_WAIT2;
-    if ( control_state == MULT_STORE )    control_state_nxt = PRE_FETCH_EXEC;
-    if ( control_state == MTRANS5_ABORT ) control_state_nxt = PRE_FETCH_EXEC;
-
-    if ( control_state == MEM_WAIT1 )
+    if ( control_state == RST_WAIT1 )          
+        control_state_nxt = RST_WAIT2;
+    else if ( control_state == RST_WAIT2 )     
+        control_state_nxt = EXECUTE;
+    else if ( control_state == INT_WAIT1 )     
+        control_state_nxt = INT_WAIT2;
+    else if ( control_state == INT_WAIT2 )     
+        control_state_nxt = EXECUTE;
+    else if ( control_state == COPRO_WAIT )    
+        control_state_nxt = PRE_FETCH_EXEC;
+    else if ( control_state == PC_STALL1 )     
+        control_state_nxt = PC_STALL2;
+    else if ( control_state == PC_STALL2 )     
+        control_state_nxt = EXECUTE;
+    else if ( control_state == SWAP_WRITE )    
+        control_state_nxt = SWAP_WAIT1;
+    else if ( control_state == SWAP_WAIT1 )    
+        control_state_nxt = SWAP_WAIT2;
+    else if ( control_state == MULT_STORE )    
+        control_state_nxt = PRE_FETCH_EXEC;
+    else if ( control_state == MTRANS5_ABORT ) 
+        control_state_nxt = PRE_FETCH_EXEC;
+    else if ( control_state == MEM_WAIT1 )     
         control_state_nxt = MEM_WAIT2;
-
-    if ( control_state == MEM_WAIT2   ||
-        control_state == SWAP_WAIT2    )
-        begin
+    else if ( control_state == MEM_WAIT2  ||
+              control_state == SWAP_WAIT2) begin
         if ( write_pc ) // writing to the PC!!
             control_state_nxt = PC_STALL1;
         else
             control_state_nxt = PRE_FETCH_EXEC;
-        end
-
-    if ( control_state == MTRANS_EXEC1 )
-        begin
+    end else if ( control_state == MTRANS_EXEC1 ) begin
         if (mtrans_instruction_nxt[15:0] != 16'd0)
             control_state_nxt = MTRANS_EXEC2;
         else   // if the register list holds a single register
             control_state_nxt = MTRANS_EXEC3;
-        end
-
+    end else if ( control_state == MTRANS_EXEC2 && mtrans_num_registers == 5'd1 ) 
         // Stay in State MTRANS_EXEC2 until the full list of registers to
         // load or store has been processed
-    if ( control_state == MTRANS_EXEC2 && mtrans_num_registers == 5'd1 )
         control_state_nxt = MTRANS_EXEC3;
-
-    if ( control_state == MTRANS_EXEC3 )     control_state_nxt = MTRANS_EXEC4;
-
-    if ( control_state == MTRANS_EXEC3B )    control_state_nxt = MTRANS_EXEC4;
-
-    if ( control_state == MTRANS_EXEC4  )
-        begin
+    else if ( control_state == MTRANS_EXEC3 )     
+        control_state_nxt = MTRANS_EXEC4;
+    else if ( control_state == MTRANS_EXEC3B )    
+        control_state_nxt = MTRANS_EXEC4;
+    else if ( control_state == MTRANS_EXEC4  ) begin
         if ( dabt ) // data abort
             control_state_nxt = MTRANS5_ABORT;
         else if (write_pc) // writing to the PC!!
             control_state_nxt = PC_STALL1;
         else
             control_state_nxt = PRE_FETCH_EXEC;
-        end
-
-    if ( control_state == MULT_PROC1 )
-        begin
+    end else if ( control_state == MULT_PROC1 ) begin
         if (!instruction_execute)
             control_state_nxt = PRE_FETCH_EXEC;
         else
             control_state_nxt = MULT_PROC2;
-        end
-
-    if ( control_state == MULT_PROC2 )
-        begin
+    end else if ( control_state == MULT_PROC2 ) begin
         if ( i_multiply_done )
             if      ( o_multiply_function[1] )  // Accumulate ?
                 control_state_nxt = MULT_ACCUMU;
             else
                 control_state_nxt = MULT_STORE;
-        end
-
-
-    if ( control_state == MULT_ACCUMU )
-        begin
+    end else if ( control_state == MULT_ACCUMU ) begin
         control_state_nxt = MULT_STORE;
-        end
-
-
-    // This should come at the end, so that conditional execution works
-    // correctly
-    if ( instruction_valid )
-        begin
+    end else if ( instruction_valid ) begin
         // default is to stay in execute state, or to move into this
         // state from a conditional execute state
         control_state_nxt = EXECUTE;
@@ -1470,34 +1451,32 @@ assign instruction_valid = (control_state == EXECUTE || control_state == PRE_FET
              control_state_nxt = MEM_WAIT1;
         if ( write_pc )
              control_state_nxt = PC_STALL1;
-        if ( itype == MTRANS )
-            begin
-            if ( mtrans_num_registers != 5'd0 )
-                begin
+        if ( itype == MTRANS ) begin
+            if ( mtrans_num_registers != 5'd0 ) begin
                 // check for LDM/STM of a single register
                 if ( mtrans_num_registers == 5'd1 )
                     control_state_nxt = MTRANS_EXEC3B;
                 else
                     control_state_nxt = MTRANS_EXEC1;
-                end
-            else
+            end else begin
                 control_state_nxt = MTRANS_EXEC3;
             end
+        end
 
         if ( itype == MULT )
-                control_state_nxt = MULT_PROC1;
+            control_state_nxt = MULT_PROC1;
 
         if ( itype == SWAP )
-                control_state_nxt = SWAP_WRITE;
+            control_state_nxt = SWAP_WRITE;
 
         if ( itype == CORTRANS && !und_request )
-                control_state_nxt = COPRO_WAIT;
+            control_state_nxt = COPRO_WAIT;
 
          // interrupt overrides everything else so its last
         if ( interrupt )
-                control_state_nxt = INT_WAIT1;
-        end
+            control_state_nxt = INT_WAIT1;
     end
+end
 
 
 // ========================================================
@@ -1575,12 +1554,7 @@ always @ ( posedge i_clk  or posedge i_rst)
         o_imm_shift_amount          <= imm_shift_amount_nxt;
         o_shift_imm_zero            <= shift_imm_zero_nxt;
 
-                                        // when have an interrupt, execute the interrupt operation
-                                        // unconditionally in the execute stage
-                                        // ensures that status_bits register gets updated correctly
-                                        // Likewise when in middle of multi-cycle instructions
-                                        // execute them unconditionally
-        condition_r                 <= instruction_valid && !interrupt ? condition_nxt : AL;
+        condition_r                 <= instruction_valid ? condition_nxt : condition_r;
         o_exclusive_exec            <= exclusive_exec_nxt;
         o_data_access_exec          <= data_access_exec_nxt;
 

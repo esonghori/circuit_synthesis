@@ -415,7 +415,7 @@ assign execute = conditional_execute ( i_condition, status_bits_flags );
             
 // allow the PC to increment to the next instruction when current
 // instruction does not execute
-assign pc_wen       = i_pc_wen || !execute;
+assign pc_wen       = i_pc_wen ;//|| !execute;
 
 // only update register bank if current instruction executes
 assign reg_bank_wen = {{15{execute}} & i_reg_bank_wen};
