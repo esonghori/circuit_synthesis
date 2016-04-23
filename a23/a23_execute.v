@@ -50,20 +50,14 @@ input                       i_rst,
 input       [31:0]          i_read_data,
 input       [4:0]           i_read_data_alignment,  // 2 LSBs of address in [4:3], appended 
                                                     // with 3 zeros
-input                       i_data_access_exec,     // from Instruction Decode stage
-                                                    // high means the memory access is a read 
-                                                    // read or write, low for instruction
 output reg  [31:0]          o_write_data,
 output wire [31:0]          o_address,
-output reg                  o_address_valid,  // Prevents the reset address value being a 
                                                     // wishbone access
 output      [31:0]          o_address_nxt,          // un-registered version of address to the 
                                                     // cache rams address ports
 output reg                  o_write_enable,
 output reg  [3:0]           o_byte_enable,
-output reg                  o_data_access,    // To Fetch stage. high = data fetch, 
                                                     // low = instruction fetch
-output      [31:0]          o_status_bits,          // Full PC will all status bits, but PC part zero'ed out
 output                      o_multiply_done,
 
 
@@ -93,11 +87,9 @@ input      [1:0]            i_byte_enable_sel,
 input      [2:0]            i_status_bits_sel,
 input      [2:0]            i_reg_write_sel,
 input                       i_write_data_wen,
-input                       i_base_address_wen,     // save LDM base address register, 
                                                     // in case of data abort
 input                       i_pc_wen,
 input      [14:0]           i_reg_bank_wen,
-input      [3:0]            i_reg_bank_wsel,
 input                       i_status_bits_flags_wen
 );
 
@@ -140,17 +132,12 @@ wire [14:0]         reg_bank_wen;
 wire [3:0]          reg_bank_wsel;
 wire [31:0]         multiply_out;
 wire [1:0]          multiply_flags;
-reg  [31:0]         base_address;    // Saves base address during LDM instruction in 
-                                           // case of data abort
 
 wire                address_update;
-wire                base_address_update;
 wire                write_data_update;
 wire                byte_enable_update;
-wire                data_access_update;
 wire                write_enable_update;
 wire                status_bits_flags_update;
-wire [1:0]          status_bits_out;
 
 wire [31:0]         alu_out_pc_filtered;
 wire [31:0]         branch_address_nxt;
@@ -159,15 +146,6 @@ wire                carry_in;
 
 reg  [31:0]         address_r;
 
-
-// ========================================================
-// Status Bits in PC register
-// ========================================================
-assign o_status_bits = {   status_bits_flags,           // 31:28
-                           1'b1,                        // 7
-                           1'b1,                        // 6
-                           24'd0,
-                           2'b0};          // 1:0 = mode
 
 // ========================================================
 // Status Bits Select
@@ -220,10 +198,8 @@ assign branch_address_nxt = (!execute) ? pc_minus4 : alu_out_pc_filtered;
 
 // if current instruction does not execute because it does not meet the condition
 // then address advances to next instruction
-assign o_address_nxt = //(!execute)              ? pc_plus4              : 
-                       (i_address_sel == 4'd0) ? pc_plus4              :
+assign o_address_nxt = (i_address_sel == 4'd0) ? pc_plus4              :
                        (i_address_sel == 4'd1) ? alu_out_pc_filtered   :
-                       //(i_address_sel == 4'd2) ? interrupt_vector      :
                        (i_address_sel == 4'd3) ? pc                    :
                        (i_address_sel == 4'd4) ? rn                    :
                        (i_address_sel == 4'd5) ? address_plus4         :  // MTRANS address incrementer
@@ -239,25 +215,15 @@ assign branch_pc_nxt = (!execute) ? pc_minus4 : alu_out;
 
 // If current instruction does not execute because it does not meet the condition
 // then PC advances to next instruction
-assign pc_nxt = //(!execute)       ? pc_plus4              :
-                i_pc_sel == 2'd0 ? pc_plus4              :
+assign pc_nxt = i_pc_sel == 2'd0 ? pc_plus4              :
                 i_pc_sel == 2'd1 ? alu_out               :
-                //i_pc_sel == 2'd2 ? interrupt_vector      :
                                    branch_pc_nxt         ;
 
 
 // ========================================================
 // Register Write Select
 // ========================================================
-wire [31:0] save_int_pc;
 wire [31:0] save_int_pc_m4;
-
-assign save_int_pc    = { status_bits_flags, 
-                          1'b1, 
-                          1'b1, 
-                          pc[25:2], 
-                          2'b0      };
-
 
 assign save_int_pc_m4 = { status_bits_flags, 
                           1'b1, 
@@ -265,16 +231,10 @@ assign save_int_pc_m4 = { status_bits_flags,
                           pc_minus4[25:2], 
                           2'b0      };
 
-
 assign reg_write_nxt = i_reg_write_sel == 3'd0 ? alu_out               :
                        // save pc to lr on an interrupt                    
                        i_reg_write_sel == 3'd1 ? save_int_pc_m4        :
-                       // to update Rd at the end of Multiplication
-                       i_reg_write_sel == 3'd2 ? multiply_out          :
-                       i_reg_write_sel == 3'd3 ? o_status_bits         :
-                       // i_reg_write_sel == 3'd5 ? i_copro_read_data     :  // mrc
-                       i_reg_write_sel == 3'd6 ? base_address          :
-                                                 save_int_pc           ;  
+                                                 multiply_out          ;  
 
 
 // ========================================================
@@ -310,9 +270,6 @@ assign pc_wen       = i_pc_wen ;//|| !execute;
 // only update register bank if current instruction executes
 assign reg_bank_wen = {{15{execute}} & i_reg_bank_wen};
 
-assign reg_bank_wsel = {{4{~execute}} | i_reg_bank_wsel};
-
-
 // ========================================================
 // Write Enable
 // ========================================================
@@ -324,36 +281,21 @@ assign write_enable_nxt = execute && i_write_data_wen;
 // Register Update
 // ========================================================
 
-assign data_access_update              = 1'b1;
-assign write_enable_update             = 1'b1;
-assign write_data_update               = 1'b1;
-assign address_update                  = 1'b1;
-assign byte_enable_update              = 1'b1;
-assign base_address_update             = execute && i_base_address_wen; 
 assign status_bits_flags_update        = execute && i_status_bits_flags_wen;
 
 always @( posedge i_clk or posedge i_rst)
     if(i_rst) begin
-      o_data_access           <= 'd0;
       o_write_enable          <= 'd0;
       o_write_data            <= 'd0;
       address_r               <= 'd0;
-      o_address_valid         <= 1'd1;
       o_byte_enable           <= 'd0;
-      base_address            <= 'd0;
       status_bits_flags       <= 'd0;
     end else begin
-    // remove extra signals
-    o_data_access           <= 'd0;//data_access_update             ? i_data_access_exec           : o_data_access;
-    o_write_enable          <= write_enable_update            ? write_enable_nxt             : o_write_enable;
-    o_write_data            <= write_data_update              ? write_data_nxt               : o_write_data; 
-    address_r               <= address_update                 ? o_address_nxt                : address_r;
-    o_address_valid         <= 1'd1;//address_update                 ? 1'd1                         : o_address_valid;
-    o_byte_enable           <= byte_enable_update             ? byte_enable_nxt              : o_byte_enable;
-
-    base_address            <= base_address_update            ? rn                           : base_address;    
-
-    status_bits_flags       <= status_bits_flags_update       ? status_bits_flags_nxt        : status_bits_flags;
+      o_write_enable          <= write_enable_nxt;
+      o_write_data            <= write_data_nxt; 
+      address_r               <= o_address_nxt;
+      o_byte_enable           <= byte_enable_nxt;
+      status_bits_flags       <= status_bits_flags_update       ? status_bits_flags_nxt        : status_bits_flags;
     end
 
 assign o_address = address_r;

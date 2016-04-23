@@ -48,13 +48,11 @@ input                       i_clk,
 input                       i_rst,
 
 input       [31:0]          i_address,
-input                       i_address_valid,
 input       [31:0]          i_address_nxt,      // un-registered version of address to the cache rams
 input       [31:0]          i_write_data,
 input                       i_write_enable,
 output       [31:0]         o_read_data,
 input       [3:0]           i_byte_enable,
-input                       i_data_access,      // high for data petch, low for instruction fetch
 input                       i_cache_enable,     // cache enable
 input                       i_cache_flush,      // cache flush
 input       [31:0]          i_cacheable_area,   // each bit corresponds to 2MB address space

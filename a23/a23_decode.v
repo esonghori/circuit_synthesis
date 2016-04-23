@@ -49,7 +49,6 @@ input       [31:0]          i_read_data,
 input       [31:0]          i_execute_address,              // Registered address output by execute stage
                                                             // 2 LSBs of read address used for calculating
                                                             // shift in LDRB ops
-input       [31:0]          i_execute_status_bits,          // current status bits values in execute stage
 input                       i_multiply_done,                // multiply unit is nearly done
 
 
@@ -63,8 +62,6 @@ output reg  [31:0]          o_imm32,
 output reg  [4:0]           o_imm_shift_amount,
 output reg                  o_shift_imm_zero,
 output wire [3:0]           o_condition,
-output reg                  o_data_access_exec,       // high means the memory access is a read
-                                                            // read or write, low for instruction
 output reg  [3:0]           o_rm_sel,
 output reg  [3:0]           o_rds_sel,
 output reg  [3:0]           o_rn_sel,
@@ -84,11 +81,8 @@ output reg  [2:0]           o_status_bits_sel,
 output reg  [2:0]           o_reg_write_sel,
 
 output reg                  o_write_data_wen,
-output reg                  o_base_address_wen,       // save LDM base address register
-                                                            // in case of data abort
 output wire                 o_pc_wen,
 output reg  [14:0]          o_reg_bank_wen,
-output reg  [3:0]           o_reg_bank_wsel,
 output reg                  o_status_bits_flags_wen
 );
 
@@ -154,7 +148,6 @@ wire    [31:0]         imm32_nxt;
 wire    [4:0]          imm_shift_amount_nxt;
 wire                   shift_imm_zero_nxt;
 wire    [3:0]          condition_nxt;
-reg                    data_access_exec_nxt;
 wire                   shift_extend;
 
 reg     [1:0]          barrel_shift_function_nxt;
@@ -179,7 +172,6 @@ reg     [3:0]          alu_out_sel_nxt;
 
 reg                    write_data_wen_nxt;
 reg                    copro_write_data_wen_nxt;
-reg                    base_address_wen_nxt;
 reg                    pc_wen_nxt;
 reg     [3:0]          reg_bank_wsel_nxt;
 reg                    status_bits_flags_wen_nxt;
@@ -209,8 +201,6 @@ wire                   use_saved_current_instruction;
 wire                   use_pre_fetch_instruction;
 reg                    mtrans_r15;
 reg                    mtrans_r15_nxt;
-reg                    restore_base_address;
-reg                    restore_base_address_nxt;
 
 wire                   regop_set_flags;
 
@@ -448,13 +438,11 @@ assign mtrans_base_reg_change = {25'd0, mtrans_num_registers, 2'd0};
 // ========================================================
 always @(*)
     begin
-    data_access_exec_nxt            = 1'd0;
 
     // Save an instruction to use later
     saved_current_instruction_wen   = 1'd0;
     pre_fetch_instruction_wen       = 1'd0;
     mtrans_r15_nxt                  = mtrans_r15;
-    restore_base_address_nxt        = restore_base_address;
 
     // default Mux Select values
     barrel_shift_amount_sel_nxt     = 'd0;  // don't shift the input
@@ -477,7 +465,6 @@ always @(*)
 
     // default Flop Write Enable values
     write_data_wen_nxt              = 'd0;
-    base_address_wen_nxt            = 'd0;
     pc_wen_nxt                      = 'd1;
     reg_bank_wsel_nxt               = 'hF;  // Don't select any
     status_bits_flags_wen_nxt       = 'd0;
@@ -593,8 +580,6 @@ always @(*)
         if ( mem_op ) begin
             saved_current_instruction_wen   = 1'd1; // Save the memory access instruction to refer back to later
             pc_wen_nxt                      = 1'd0; // hold current PC value
-            data_access_exec_nxt            = 1'd1; // indicate that its a data read or write,
-                                                    // rather than an instruction fetch
             alu_out_sel_nxt                 = 4'd1; // Add
 
             if ( !instruction[23] ) begin // U: Subtract offset
@@ -647,19 +632,8 @@ always @(*)
         if ( itype == MTRANS ) begin
             saved_current_instruction_wen   = 1'd1; // Save the memory access instruction to refer back to later
             pc_wen_nxt                      = 1'd0; // hold current PC value
-            data_access_exec_nxt            = 1'd1; // indicate that its a data read or write,
-                                                    // rather than an instruction fetch
             alu_out_sel_nxt                 = 4'd1; // Add
             mtrans_r15_nxt                  = instruction[15];  // load or save r15 ?
-            base_address_wen_nxt            = 1'd1; // Save the value of the register used for the base address,
-                                                    // in case of a data abort, and need to restore the value
-
-            // The spec says -
-            // If the instruction would have overwritten the base with data
-            // (that is, it has the base in the transfer list), the overwriting is prevented.
-            // This is true even when the abort occurs after the base word gets loaded
-            restore_base_address_nxt        = instruction[20] &&
-                                                (instruction[15:0] & (1'd1 << instruction[19:16]));
 
             // Increment or Decrement
             if ( instruction[23] ) begin// increment
@@ -751,9 +725,6 @@ always @(*)
 
         address_sel_nxt             = 4'd5;  // o_address
         pc_wen_nxt                  = 1'd0;  // hold current PC value
-        data_access_exec_nxt        = 1'd1;  // indicate that its a data read or write,
-                                             // rather than an instruction fetch
-
         if ( !instruction[20] ) // Store
             write_data_wen_nxt = 1'd1;
     end
@@ -763,8 +734,6 @@ always @(*)
     if ( control_state == MTRANS_EXEC2 ) begin
         address_sel_nxt             = 4'd5;  // o_address
         pc_wen_nxt                  = 1'd0;  // hold current PC value
-        data_access_exec_nxt        = 1'd1;  // indicate that its a data read or write,
-                                             // rather than an instruction fetch
         barrel_shift_data_sel_nxt   = 2'd1;  // load word from memory
 
         // Load or Store
@@ -967,7 +936,6 @@ always @ ( posedge i_clk  or posedge i_rst)
         o_imm_shift_amount          <= 'd0;
         o_shift_imm_zero            <= 'd0;
         condition_r                 <=  4'he;
-        o_data_access_exec          <= 'd0;
         o_rm_sel                    <= 'd0;
         o_rds_sel                   <= 'd0;
         o_rn_sel                    <= 'd0;
@@ -977,19 +945,16 @@ always @ ( posedge i_clk  or posedge i_rst)
         o_alu_function              <= 'd0;
         o_use_carry_in              <= 'd0;
         o_multiply_function         <= 'd0;
-        address_sel_r               <= 4'd2;
-        pc_sel_r                    <= 2'd2;
+        address_sel_r               <= 'd0;
+        pc_sel_r                    <= 'd0;
         o_byte_enable_sel           <= 'd0;
         o_status_bits_sel           <= 'd0;
         o_reg_write_sel             <= 'd0;
         o_write_data_wen            <= 'd0;
-        o_base_address_wen          <= 'd0;
         pc_wen_r                    <= 1'd1;
-        o_reg_bank_wsel             <= 'd0;
         o_reg_bank_wen              <= 'd0;
         o_status_bits_flags_wen     <= 'd0;
         mtrans_r15                  <= 'd0;
-        restore_base_address        <= 'd0;
         control_state               <= RST_WAIT1;
         mtrans_reg_d1               <= 'd0;
         mtrans_reg_d2               <= 'd0;
@@ -1001,7 +966,6 @@ always @ ( posedge i_clk  or posedge i_rst)
         o_shift_imm_zero            <= shift_imm_zero_nxt;
 
         condition_r                 <= instruction_valid ? condition_nxt : condition_r;
-        o_data_access_exec          <= data_access_exec_nxt;
 
         o_rm_sel                    <= o_rm_sel_nxt;
         o_rds_sel                   <= o_rds_sel_nxt;
@@ -1018,14 +982,11 @@ always @ ( posedge i_clk  or posedge i_rst)
         o_status_bits_sel           <= status_bits_sel_nxt;
         o_reg_write_sel             <= reg_write_sel_nxt;
         o_write_data_wen            <= write_data_wen_nxt;
-        o_base_address_wen          <= base_address_wen_nxt;
         pc_wen_r                    <= pc_wen_nxt;
-        o_reg_bank_wsel             <= reg_bank_wsel_nxt;
         o_reg_bank_wen              <= decode ( reg_bank_wsel_nxt );
         o_status_bits_flags_wen     <= status_bits_flags_wen_nxt;
 
         mtrans_r15                  <= mtrans_r15_nxt;
-        restore_base_address        <= restore_base_address_nxt;
         control_state               <= control_state_nxt;
         mtrans_reg_d1               <= mtrans_reg;
         mtrans_reg_d2               <= mtrans_reg_d1;

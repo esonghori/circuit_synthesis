@@ -55,16 +55,12 @@ output                      terminate
 );
 
 wire      [31:0]          execute_address;
-wire                      execute_address_valid;
 wire      [31:0]          execute_address_nxt;  // un-registered version of execute_address to the cache rams
 wire      [31:0]          write_data;
 wire                      write_enable;
 wire      [31:0]          read_data;
-wire                      data_access_exec;
 wire      [3:0]           byte_enable;
-wire                      data_access;          // high for data petch, low for instruction fetch         
-wire                      status_bits_flags_wen;     
-wire     [31:0]           execute_status_bits;
+wire                      status_bits_flags_wen;
                  
 wire     [31:0]           imm32;                   
 wire     [4:0]            imm_shift_amount; 
@@ -90,11 +86,9 @@ wire     [1:0]            pc_sel;
 wire     [1:0]            byte_enable_sel;         
 wire     [2:0]            status_bits_sel;                
 wire     [2:0]            reg_write_sel;
-wire                      write_data_wen;          
-wire                      base_address_wen;        
+wire                      write_data_wen;
 wire                      pc_wen;                  
-wire     [14:0]           reg_bank_wen;            
-wire     [3:0]            reg_bank_wsel;            
+wire     [14:0]           reg_bank_wen;
 
 wire                      multiply_done;
 
@@ -106,13 +100,11 @@ a23_fetch u_fetch (
     .i_rst                              ( i_rst                             ),
 
     .i_address                          ( {execute_address[31:2], 2'd0}     ),
-    .i_address_valid                    ( execute_address_valid             ), 
     .i_address_nxt                      ( execute_address_nxt               ),
     .i_write_data                       ( write_data                        ),
     .i_write_enable                     ( write_enable                      ),
     .o_read_data                        ( read_data                         ),
-    .i_byte_enable                      ( byte_enable                       ),
-    .i_data_access                      ( data_access                       ),      
+    .i_byte_enable                      ( byte_enable                       ),     
     .i_cache_enable                     ( 1'b0                              ),     
     .i_cache_flush                      ( 1'b0                              ), 
     .i_cacheable_area                   ( 32'b0                             ),
@@ -135,13 +127,11 @@ a23_decode u_decode (
     
     .o_read_data                        ( read_data_s2                      ),                                          
     .o_read_data_alignment              ( read_data_alignment               ),                                          
-    .i_execute_status_bits              ( execute_status_bits               ),                                          
     .i_multiply_done                    ( multiply_done                     ),  
     .o_imm32                            ( imm32                             ),
     .o_imm_shift_amount                 ( imm_shift_amount                  ),
     .o_shift_imm_zero                   ( shift_imm_zero                    ),
     .o_condition                        ( condition                         ),
-    .o_data_access_exec                 ( data_access_exec                  ),
     .o_rm_sel                           ( rm_sel                            ),
     .o_rds_sel                          ( rds_sel                           ),
     .o_rn_sel                           ( rn_sel                            ),
@@ -160,10 +150,8 @@ a23_decode u_decode (
     .o_status_bits_sel                  ( status_bits_sel                   ),
     .o_reg_write_sel                    ( reg_write_sel                     ),
     .o_write_data_wen                   ( write_data_wen                    ),
-    .o_base_address_wen                 ( base_address_wen                  ),
     .o_pc_wen                           ( pc_wen                            ),
     .o_reg_bank_wen                     ( reg_bank_wen                      ),
-    .o_reg_bank_wsel                    ( reg_bank_wsel                     ),
     .o_status_bits_flags_wen            ( status_bits_flags_wen             )
 );
 
@@ -177,20 +165,16 @@ a23_execute u_execute (
     
     .o_write_data                       ( write_data                        ),
     .o_address                          ( execute_address                   ),
-    .o_address_valid                    ( execute_address_valid             ),
     .o_address_nxt                      ( execute_address_nxt               ),
 
     .o_byte_enable                      ( byte_enable                       ),
-    .o_data_access                      ( data_access                       ),
     .o_write_enable                     ( write_enable                      ),
-    .o_status_bits                      ( execute_status_bits               ),
     .o_multiply_done                    ( multiply_done                     ),   
     .i_imm32                            ( imm32                             ),   
     .i_imm_shift_amount                 ( imm_shift_amount                  ),   
     .i_shift_imm_zero                   ( shift_imm_zero                    ),   
     .i_condition                        ( condition                         ),
-
-    .i_data_access_exec                 ( data_access_exec                  ),   
+  
     .i_rm_sel                           ( rm_sel                            ),   
     .i_rds_sel                          ( rds_sel                           ),   
     .i_rn_sel                           ( rn_sel                            ),   
@@ -209,11 +193,9 @@ a23_execute u_execute (
     .i_status_bits_sel                  ( status_bits_sel                   ),   
     .i_reg_write_sel                    ( reg_write_sel                     ),
 
-    .i_write_data_wen                   ( write_data_wen                    ),   
-    .i_base_address_wen                 ( base_address_wen                  ),   
+    .i_write_data_wen                   ( write_data_wen                    ),      
     .i_pc_wen                           ( pc_wen                            ),   
-    .i_reg_bank_wen                     ( reg_bank_wen                      ),   
-    .i_reg_bank_wsel                    ( reg_bank_wsel                     ),
+    .i_reg_bank_wen                     ( reg_bank_wen                      ),
     .i_status_bits_flags_wen            ( status_bits_flags_wen             )
 );
 
