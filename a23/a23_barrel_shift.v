@@ -68,10 +68,8 @@ wire [32:0] ror_out;
 // lsl #0 is a special case, where the shifter carry out is the old value of the status flags
 // C flag. The contents of Rm are used directly as the second operand.
 assign lsl_out = i_shift_imm_zero         ? {i_carry_in, i_in              } :  // fall through case 
-
                  i_shift_amount == 8'd 0  ? {i_carry_in, i_in              } :  // fall through case
                  i_shift_amount == 8'd 1  ? {i_in[31],   i_in[30: 0],  1'd0} :
-                 
                  i_shift_amount == 8'd 2  ? {i_in[30],   i_in[29: 0],  2'd0} :
                  i_shift_amount == 8'd 3  ? {i_in[29],   i_in[28: 0],  3'd0} :
                  i_shift_amount == 8'd 4  ? {i_in[28],   i_in[27: 0],  4'd0} :
@@ -82,7 +80,6 @@ assign lsl_out = i_shift_imm_zero         ? {i_carry_in, i_in              } :  
                  i_shift_amount == 8'd 9  ? {i_in[23],   i_in[22: 0],  9'd0} :
                  i_shift_amount == 8'd10  ? {i_in[22],   i_in[21: 0], 10'd0} :
                  i_shift_amount == 8'd11  ? {i_in[21],   i_in[20: 0], 11'd0} :
-                    
                  i_shift_amount == 8'd12  ? {i_in[20],   i_in[19: 0], 12'd0} :
                  i_shift_amount == 8'd13  ? {i_in[19],   i_in[18: 0], 13'd0} :
                  i_shift_amount == 8'd14  ? {i_in[18],   i_in[17: 0], 14'd0} :
@@ -93,7 +90,6 @@ assign lsl_out = i_shift_imm_zero         ? {i_carry_in, i_in              } :  
                  i_shift_amount == 8'd19  ? {i_in[13],   i_in[12: 0], 19'd0} :
                  i_shift_amount == 8'd20  ? {i_in[12],   i_in[11: 0], 20'd0} :
                  i_shift_amount == 8'd21  ? {i_in[11],   i_in[10: 0], 21'd0} :
-
                  i_shift_amount == 8'd22  ? {i_in[10],   i_in[ 9: 0], 22'd0} :
                  i_shift_amount == 8'd23  ? {i_in[ 9],   i_in[ 8: 0], 23'd0} :
                  i_shift_amount == 8'd24  ? {i_in[ 8],   i_in[ 7: 0], 24'd0} :
@@ -112,7 +108,6 @@ assign lsl_out = i_shift_imm_zero         ? {i_carry_in, i_in              } :  
 // to encode LSR #32, which has a zero result with bit 31 of Rm as the carry output. 
                                            // carry out, < -------- out ---------->
 assign lsr_out = i_shift_imm_zero         ? {i_in[31], 32'd0             } :
-
                  i_shift_amount == 8'd 0  ? {i_carry_in, i_in            } :  // fall through case
                  i_shift_amount == 8'd 1  ? {i_in[ 0],  1'd0, i_in[31: 1]} :
                  i_shift_amount == 8'd 2  ? {i_in[ 1],  2'd0, i_in[31: 2]} :
@@ -123,7 +118,6 @@ assign lsr_out = i_shift_imm_zero         ? {i_in[31], 32'd0             } :
                  i_shift_amount == 8'd 7  ? {i_in[ 6],  7'd0, i_in[31: 7]} :
                  i_shift_amount == 8'd 8  ? {i_in[ 7],  8'd0, i_in[31: 8]} :
                  i_shift_amount == 8'd 9  ? {i_in[ 8],  9'd0, i_in[31: 9]} :
-                    
                  i_shift_amount == 8'd10  ? {i_in[ 9], 10'd0, i_in[31:10]} :
                  i_shift_amount == 8'd11  ? {i_in[10], 11'd0, i_in[31:11]} :
                  i_shift_amount == 8'd12  ? {i_in[11], 12'd0, i_in[31:12]} :
@@ -134,7 +128,6 @@ assign lsr_out = i_shift_imm_zero         ? {i_in[31], 32'd0             } :
                  i_shift_amount == 8'd17  ? {i_in[16], 17'd0, i_in[31:17]} :
                  i_shift_amount == 8'd18  ? {i_in[17], 18'd0, i_in[31:18]} :
                  i_shift_amount == 8'd19  ? {i_in[18], 19'd0, i_in[31:19]} :
-
                  i_shift_amount == 8'd20  ? {i_in[19], 20'd0, i_in[31:20]} :
                  i_shift_amount == 8'd21  ? {i_in[20], 21'd0, i_in[31:21]} :
                  i_shift_amount == 8'd22  ? {i_in[21], 22'd0, i_in[31:22]} :
@@ -145,7 +138,6 @@ assign lsr_out = i_shift_imm_zero         ? {i_in[31], 32'd0             } :
                  i_shift_amount == 8'd27  ? {i_in[26], 27'd0, i_in[31:27]} :
                  i_shift_amount == 8'd28  ? {i_in[27], 28'd0, i_in[31:28]} :
                  i_shift_amount == 8'd29  ? {i_in[28], 29'd0, i_in[31:29]} :
-
                  i_shift_amount == 8'd30  ? {i_in[29], 30'd0, i_in[31:30]} :
                  i_shift_amount == 8'd31  ? {i_in[30], 31'd0, i_in[31   ]} :
                  i_shift_amount == 8'd32  ? {i_in[31], 32'd0             } :
@@ -159,7 +151,6 @@ assign lsr_out = i_shift_imm_zero         ? {i_in[31], 32'd0             } :
 
                                           // carry out, < -------- out ---------->
 assign asr_out = i_shift_imm_zero         ? {i_in[31], {32{i_in[31]}}             } :
-
                  i_shift_amount == 8'd 0  ? {i_carry_in, i_in                     } :  // fall through case
                  i_shift_amount == 8'd 1  ? {i_in[ 0], { 2{i_in[31]}}, i_in[30: 1]} :
                  i_shift_amount == 8'd 2  ? {i_in[ 1], { 3{i_in[31]}}, i_in[30: 2]} :
@@ -170,7 +161,6 @@ assign asr_out = i_shift_imm_zero         ? {i_in[31], {32{i_in[31]}}           
                  i_shift_amount == 8'd 7  ? {i_in[ 6], { 8{i_in[31]}}, i_in[30: 7]} :
                  i_shift_amount == 8'd 8  ? {i_in[ 7], { 9{i_in[31]}}, i_in[30: 8]} :
                  i_shift_amount == 8'd 9  ? {i_in[ 8], {10{i_in[31]}}, i_in[30: 9]} :
-                    
                  i_shift_amount == 8'd10  ? {i_in[ 9], {11{i_in[31]}}, i_in[30:10]} :
                  i_shift_amount == 8'd11  ? {i_in[10], {12{i_in[31]}}, i_in[30:11]} :
                  i_shift_amount == 8'd12  ? {i_in[11], {13{i_in[31]}}, i_in[30:12]} :
@@ -181,7 +171,6 @@ assign asr_out = i_shift_imm_zero         ? {i_in[31], {32{i_in[31]}}           
                  i_shift_amount == 8'd17  ? {i_in[16], {18{i_in[31]}}, i_in[30:17]} :
                  i_shift_amount == 8'd18  ? {i_in[17], {19{i_in[31]}}, i_in[30:18]} :
                  i_shift_amount == 8'd19  ? {i_in[18], {20{i_in[31]}}, i_in[30:19]} :
-
                  i_shift_amount == 8'd20  ? {i_in[19], {21{i_in[31]}}, i_in[30:20]} :
                  i_shift_amount == 8'd21  ? {i_in[20], {22{i_in[31]}}, i_in[30:21]} :
                  i_shift_amount == 8'd22  ? {i_in[21], {23{i_in[31]}}, i_in[30:22]} :
@@ -192,7 +181,6 @@ assign asr_out = i_shift_imm_zero         ? {i_in[31], {32{i_in[31]}}           
                  i_shift_amount == 8'd27  ? {i_in[26], {28{i_in[31]}}, i_in[30:27]} :
                  i_shift_amount == 8'd28  ? {i_in[27], {29{i_in[31]}}, i_in[30:28]} :
                  i_shift_amount == 8'd29  ? {i_in[28], {30{i_in[31]}}, i_in[30:29]} :
-
                  i_shift_amount == 8'd30  ? {i_in[29], {31{i_in[31]}}, i_in[30   ]} :
                  i_shift_amount == 8'd31  ? {i_in[30], {32{i_in[31]}}             } :
                                             {i_in[31], {32{i_in[31]}}             } ; // >= 32
@@ -200,9 +188,7 @@ assign asr_out = i_shift_imm_zero         ? {i_in[31], {32{i_in[31]}}           
 
                                           // carry out, < ------- out --------->
 assign ror_out = i_shift_imm_zero              ? {i_in[ 0], i_carry_in,  i_in[31: 1]} :  // RXR, (ROR w/ imm 0)
-
                  i_shift_amount[7:0] == 8'd 0  ? {i_carry_in, i_in                  } :  // fall through case
-                 
                  i_shift_amount[4:0] == 5'd 0  ? {i_in[31], i_in                    } :  // Rs > 31
                  i_shift_amount[4:0] == 5'd 1  ? {i_in[ 0], i_in[    0], i_in[31: 1]} :
                  i_shift_amount[4:0] == 5'd 2  ? {i_in[ 1], i_in[ 1: 0], i_in[31: 2]} :
@@ -213,7 +199,6 @@ assign ror_out = i_shift_imm_zero              ? {i_in[ 0], i_carry_in,  i_in[31
                  i_shift_amount[4:0] == 5'd 7  ? {i_in[ 6], i_in[ 6: 0], i_in[31: 7]} :
                  i_shift_amount[4:0] == 5'd 8  ? {i_in[ 7], i_in[ 7: 0], i_in[31: 8]} :
                  i_shift_amount[4:0] == 5'd 9  ? {i_in[ 8], i_in[ 8: 0], i_in[31: 9]} :
-                    
                  i_shift_amount[4:0] == 5'd10  ? {i_in[ 9], i_in[ 9: 0], i_in[31:10]} :
                  i_shift_amount[4:0] == 5'd11  ? {i_in[10], i_in[10: 0], i_in[31:11]} :
                  i_shift_amount[4:0] == 5'd12  ? {i_in[11], i_in[11: 0], i_in[31:12]} :
@@ -224,7 +209,6 @@ assign ror_out = i_shift_imm_zero              ? {i_in[ 0], i_carry_in,  i_in[31
                  i_shift_amount[4:0] == 5'd17  ? {i_in[16], i_in[16: 0], i_in[31:17]} :
                  i_shift_amount[4:0] == 5'd18  ? {i_in[17], i_in[17: 0], i_in[31:18]} :
                  i_shift_amount[4:0] == 5'd19  ? {i_in[18], i_in[18: 0], i_in[31:19]} :
-
                  i_shift_amount[4:0] == 5'd20  ? {i_in[19], i_in[19: 0], i_in[31:20]} :
                  i_shift_amount[4:0] == 5'd21  ? {i_in[20], i_in[20: 0], i_in[31:21]} :
                  i_shift_amount[4:0] == 5'd22  ? {i_in[21], i_in[21: 0], i_in[31:22]} :
@@ -235,7 +219,6 @@ assign ror_out = i_shift_imm_zero              ? {i_in[ 0], i_carry_in,  i_in[31
                  i_shift_amount[4:0] == 5'd27  ? {i_in[26], i_in[26: 0], i_in[31:27]} :
                  i_shift_amount[4:0] == 5'd28  ? {i_in[27], i_in[27: 0], i_in[31:28]} :
                  i_shift_amount[4:0] == 5'd29  ? {i_in[28], i_in[28: 0], i_in[31:29]} :
-
                  i_shift_amount[4:0] == 5'd30  ? {i_in[29], i_in[29: 0], i_in[31:30]} :
                                                  {i_in[30], i_in[30: 0], i_in[31:31]} ;
                  
