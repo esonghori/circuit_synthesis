@@ -282,7 +282,8 @@ module ror_struct
   generate
     for (i = 0; i < CTRL; i = i + 1) 
     begin: mux
-      assign tmp[i] = shift[i] ? {tmp[i+1][(2**i)-1:0],tmp[i+1][WIDTH-1:(2**i)]} : tmp[i+1];
+      //assign tmp[i] = shift[i] ? {tmp[i+1][(2**i)-1:0],tmp[i+1][WIDTH-1:(2**i)]} : tmp[i+1];
+      MUX #(.N(WIDTH)) u_MUX (.A(tmp[i+1]),.B({tmp[i+1][(2**i)-1:0],tmp[i+1][WIDTH-1:(2**i)]} ),.S(shift[i]), .O(tmp[i]));
     end
   endgenerate
 endmodule
@@ -306,7 +307,8 @@ module asr_struct
   generate
     for (i = 0; i < CTRL; i = i + 1) 
     begin: mux
-      assign tmp[i] = shift[i] ? {{(2**i){tmp[i+1][WIDTH-1]}},tmp[i+1][WIDTH-1:(2**i)]} : tmp[i+1];
+      //assign tmp[i] = shift[i] ? {{(2**i){tmp[i+1][WIDTH-1]}},tmp[i+1][WIDTH-1:(2**i)]} : tmp[i+1];
+      MUX #(.N(WIDTH)) u_MUX(.A(tmp[i+1]),.B({{(2**i){tmp[i+1][WIDTH-1]}},tmp[i+1][WIDTH-1:(2**i)]}),.S(shift[i]), .O(tmp[i]));
     end
   endgenerate
 endmodule
@@ -329,7 +331,8 @@ module lsr_struct
   generate
     for (i = 0; i < CTRL; i = i + 1) 
     begin: mux
-      assign tmp[i] = shift[i] ? {{(2**i){1'b0}},tmp[i+1][WIDTH-1:(2**i)]} : tmp[i+1];
+      //assign tmp[i] = shift[i] ? {{(2**i){1'b0}},tmp[i+1][WIDTH-1:(2**i)]} : tmp[i+1];
+      MUX #(.N(WIDTH)) u_MUX(.A(tmp[i+1]),.B({{(2**i){1'b0}},tmp[i+1][WIDTH-1:(2**i)]}),.S(shift[i]), .O(tmp[i]));
     end
   endgenerate
 endmodule
@@ -352,7 +355,9 @@ module lsl_struct
   generate
     for (i = 0; i < CTRL; i = i + 1) 
     begin: mux
-      assign tmp[i] = shift[i] ? {tmp[i+1][WIDTH-(2**i)-1:0], {(2**i){1'b0}}} : tmp[i+1];
+      //assign tmp[i] = shift[i] ? {tmp[i+1][WIDTH-(2**i)-1:0], {(2**i){1'b0}}} : tmp[i+1];
+      MUX #(.N(WIDTH)) u_MUX(.A(tmp[i+1]),.B({tmp[i+1][WIDTH-(2**i)-1:0], {(2**i){1'b0}}}),.S(shift[i]), .O(tmp[i]));
     end
   endgenerate
 endmodule
+

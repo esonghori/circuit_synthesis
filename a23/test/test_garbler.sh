@@ -4,6 +4,7 @@ rm -f o.txt
 rm -rf work transcript vsim.wlf
 vlib work
 
+vlog ../../syn_lib/MUX.v
 vlog ../*.v
 vlog a23_testbench.v
 
