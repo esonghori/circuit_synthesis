@@ -202,8 +202,7 @@ assign lsr_out[31:0] = lsr_out_struct[31:0];
 wire [32:0] asr_out_struct;
 asr_struct #(.CTRL(5)) u_asr_struct(i_in, i_shift_amount[4:0], asr_out_struct);
 
-assign asr_out[32] = //i_shift_amount == 5'd0  ? i_carry_in: 
-asr_out_struct[32];
+assign asr_out[32] = i_shift_amount == 5'd0  ? i_carry_in: asr_out_struct[32];
 assign asr_out[31:0] = asr_out_struct[31:0];
 
                                           // carry out, < ------- out --------->
@@ -341,7 +340,7 @@ module lsl_struct
   output  [WIDTH:0] out 
 );
 
-  wire [WIDTH-1:0] tmp [CTRL:0];
+  wire [WIDTH:0] tmp [CTRL:0];
   assign tmp[CTRL] = {in[WIDTH-1], in};
   assign out = tmp[0];
   genvar i, j;
