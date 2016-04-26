@@ -60,7 +60,6 @@ output reg  [4:0]           o_read_data_alignment,  // 2 LSBs of read address us
 
 output reg  [31:0]          o_imm32,
 output reg  [4:0]           o_imm_shift_amount,
-output reg                  o_shift_imm_zero,
 output wire [3:0]           o_condition,
 output reg  [3:0]           o_rm_sel,
 output reg  [3:0]           o_rds_sel,
@@ -146,7 +145,6 @@ wire                   mem_op_post_indexed;
 // Flop inputs
 wire    [31:0]         imm32_nxt;
 wire    [4:0]          imm_shift_amount_nxt;
-wire                   shift_imm_zero_nxt;
 wire    [3:0]          condition_nxt;
 wire                   shift_extend;
 
@@ -349,12 +347,6 @@ assign imm32_nxt            =  // add 0 to Rm
 
 
 assign imm_shift_amount_nxt = shift_imm ;
-
-       // This signal is encoded in the decode stage because
-       // it is on the critical path in the execute stage
-assign shift_imm_zero_nxt   = imm_shift_amount_nxt == 5'd0 &&       // immediate amount = 0
-                              barrel_shift_amount_sel_nxt == 2'd2;  // shift immediate amount
-
 assign alu_function_nxt     = { alu_swap_sel_nxt,
                                 alu_not_sel_nxt,
                                 alu_cin_sel_nxt,
@@ -934,7 +926,6 @@ always @ ( posedge i_clk  or posedge i_rst)
         o_read_data_alignment       <= 'd0;
         o_imm32                     <= 'd0;
         o_imm_shift_amount          <= 'd0;
-        o_shift_imm_zero            <= 'd0;
         condition_r                 <=  4'he;
         o_rm_sel                    <= 'd0;
         o_rds_sel                   <= 'd0;
@@ -963,7 +954,6 @@ always @ ( posedge i_clk  or posedge i_rst)
         o_read_data_alignment       <= {i_execute_address[1:0], 3'd0};
         o_imm32                     <= imm32_nxt;
         o_imm_shift_amount          <= imm_shift_amount_nxt;
-        o_shift_imm_zero            <= shift_imm_zero_nxt;
 
         condition_r                 <= instruction_valid ? condition_nxt : condition_r;
 

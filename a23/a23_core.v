@@ -63,8 +63,7 @@ wire      [3:0]           byte_enable;
 wire                      status_bits_flags_wen;
                  
 wire     [31:0]           imm32;                   
-wire     [4:0]            imm_shift_amount; 
-wire                      shift_imm_zero;      
+wire     [4:0]            imm_shift_amount;   
 wire     [3:0]            condition;               
 wire     [31:0]           read_data_s2;            
 wire     [4:0]            read_data_alignment;     
@@ -130,7 +129,6 @@ a23_decode u_decode (
     .i_multiply_done                    ( multiply_done                     ),  
     .o_imm32                            ( imm32                             ),
     .o_imm_shift_amount                 ( imm_shift_amount                  ),
-    .o_shift_imm_zero                   ( shift_imm_zero                    ),
     .o_condition                        ( condition                         ),
     .o_rm_sel                           ( rm_sel                            ),
     .o_rds_sel                          ( rds_sel                           ),
@@ -171,8 +169,8 @@ a23_execute u_execute (
     .o_write_enable                     ( write_enable                      ),
     .o_multiply_done                    ( multiply_done                     ),   
     .i_imm32                            ( imm32                             ),   
-    .i_imm_shift_amount                 ( imm_shift_amount                  ),   
-    .i_shift_imm_zero                   ( shift_imm_zero                    ),   
+    .i_imm_shift_amount                 ( imm_shift_amount                  ),
+
     .i_condition                        ( condition                         ),
   
     .i_rm_sel                           ( rm_sel                            ),   

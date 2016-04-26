@@ -44,7 +44,6 @@ module a23_barrel_shift (
 input       [31:0]          i_in,
 input                       i_carry_in,
 input       [7:0]           i_shift_amount,     // uses 8 LSBs of Rs, or a 5 bit immediate constant
-input                       i_shift_imm_zero,   // high when immediate shift value of zero selected
 input       [1:0]           i_function,
 
 output      [31:0]          o_out,
@@ -104,13 +103,11 @@ wire [32:0] ror_out;
 //                                             {1'd0,       32'd0             } ;  // > 32
                                             
 
-wire [31:0] lsl_out_struct;
-lsl_struct u_lsl_struct(i_in, i_shift_amount[4:0], lsl_out_struct);
+wire [32:0] lsl_out_struct;
+lsl_struct #(.CTRL(5)) u_lsl_struct(i_in, i_shift_amount[4:0], lsl_out_struct);
 
-assign lsl_out = i_shift_imm_zero         ? {i_carry_in, i_in              } :  // fall through case 
-                 i_shift_amount == 8'd 0  ? {i_carry_in, i_in              } :  // fall through case
-                                            {i_in[8'd32-i_shift_amount[4:0]], lsl_out_struct};
-
+assign lsl_out[32] = i_shift_amount == 5'd0  ? i_carry_in: lsl_out_struct[32];
+assign lsl_out[31:0] = lsl_out_struct[31:0];
 
 // The form of the shift field which might be expected to correspond to LSR #0 is used
 // to encode LSR #32, which has a zero result with bit 31 of Rm as the carry output. 
@@ -153,12 +150,11 @@ assign lsl_out = i_shift_imm_zero         ? {i_carry_in, i_in              } :  
 
 
 
-wire [31:0] lsr_out_struct;
-lsr_struct u_lsr_struct(i_in, i_shift_amount[4:0], lsr_out_struct);
+wire [32:0] lsr_out_struct;
+lsr_struct #(.CTRL(5)) u_lsr_struct(i_in, i_shift_amount[4:0], lsr_out_struct);
 
-assign lsr_out = i_shift_imm_zero         ? {i_in[31], 32'd0             } :
-                 i_shift_amount == 8'd 0  ? {i_carry_in, i_in            } :  // fall through case
-                                            {i_in[i_shift_amount[4:0]-1], lsr_out_struct};
+assign lsr_out[32] = i_shift_amount == 5'd0  ? i_carry_in: lsr_out_struct[32];
+assign lsr_out[31:0] = lsr_out_struct[31:0];
 
 
 // The form of the shift field which might be expected to give ASR #0 is used to encode
@@ -203,14 +199,12 @@ assign lsr_out = i_shift_imm_zero         ? {i_in[31], 32'd0             } :
 //                                             {i_in[31], {32{i_in[31]}}             } ; // >= 32
                                             
 
-wire [31:0] asr_out_struct;
-asr_struct u_asr_struct(i_in, i_shift_amount[4:0], asr_out_struct);
+wire [32:0] asr_out_struct;
+asr_struct #(.CTRL(5)) u_asr_struct(i_in, i_shift_amount[4:0], asr_out_struct);
 
-assign asr_out = i_shift_imm_zero         ? {i_in[31], {32{i_in[31]}}             } :
-                 i_shift_amount == 8'd 0  ? {i_carry_in, i_in                     } :  // fall through case
-                                            {i_in[i_shift_amount[4:0]-1], asr_out_struct};
-
-
+assign asr_out[32] = //i_shift_amount == 5'd0  ? i_carry_in: 
+asr_out_struct[32];
+assign asr_out[31:0] = asr_out_struct[31:0];
 
                                           // carry out, < ------- out --------->
 // assign ror_out = i_shift_imm_zero              ? {i_in[ 0], i_carry_in,  i_in[31: 1]} :  // RXR, (ROR w/ imm 0)
@@ -248,12 +242,12 @@ assign asr_out = i_shift_imm_zero         ? {i_in[31], {32{i_in[31]}}           
 //                  i_shift_amount[4:0] == 5'd30  ? {i_in[29], i_in[29: 0], i_in[31:30]} :
 //                                                  {i_in[30], i_in[30: 0], i_in[31:31]} ;
                  
-wire [31:0] ror_out_struct;
-ror_struct u_ror_struct(i_in, i_shift_amount[4:0], ror_out_struct);
-assign ror_out = i_shift_imm_zero              ? {i_in[ 0], i_carry_in,  i_in[31: 1]} :  // RXR, (ROR w/ imm 0)
-                 i_shift_amount[7:0] == 8'd 0  ? {i_carry_in, i_in                  } :  // fall through case
-                                                 {i_in[i_shift_amount[4:0]-1], ror_out_struct};
+wire [32:0] ror_out_struct;
+ror_struct #(.CTRL(5)) u_ror_struct(i_in, i_shift_amount[4:0], ror_out_struct);
 
+
+assign ror_out[32] = i_shift_amount == 5'd0  ? i_carry_in: ror_out_struct[32];
+assign ror_out[31:0] = ror_out_struct[31:0];
 
  
 assign {o_carry_out, o_out} = i_function == LSL ? lsl_out :
@@ -272,18 +266,16 @@ module ror_struct
 ( 
   input   [WIDTH-1:0] in,
   input   [ CTRL-1:0] shift,
-  output  [WIDTH-1:0] out 
+  output  [WIDTH:0] out 
 );
 
-  wire [WIDTH-1:0] tmp [CTRL:0];
-  assign tmp[CTRL] = in;
+  wire [WIDTH:0] tmp [CTRL:0];
+  assign tmp[CTRL] = {in[31], in};
   assign out = tmp[0];
   genvar i;
   generate
-    for (i = 0; i < CTRL; i = i + 1) 
-    begin: mux
-      //assign tmp[i] = shift[i] ? {tmp[i+1][(2**i)-1:0],tmp[i+1][WIDTH-1:(2**i)]} : tmp[i+1];
-      MUX #(.N(WIDTH)) u_MUX (.A(tmp[i+1]),.B({tmp[i+1][(2**i)-1:0],tmp[i+1][WIDTH-1:(2**i)]} ),.S(shift[i]), .O(tmp[i]));
+    for (i = 0; i < CTRL; i = i + 1) begin: mux
+      assign tmp[i] = shift[i] ? {tmp[i+1][(2**i)-1], tmp[i+1][(2**i)-1:0],tmp[i+1][WIDTH-1:(2**i)]} : tmp[i+1];
     end
   endgenerate
 endmodule
@@ -297,21 +289,22 @@ module asr_struct
 ( 
   input   [WIDTH-1:0] in,
   input   [ CTRL-1:0] shift,
-  output  [WIDTH-1:0] out 
+  output  [WIDTH:0] out 
 );
 
-  wire [WIDTH-1:0] tmp [CTRL:0];
-  assign tmp[CTRL] = in;
+  wire sign = in[WIDTH -1];
+
+  wire [WIDTH:0] tmp [CTRL:0];
+  assign tmp[CTRL] = {in[0], in};
   assign out = tmp[0];
   genvar i;
   generate
-    for (i = 0; i < CTRL; i = i + 1) 
-    begin: mux
-      //assign tmp[i] = shift[i] ? {{(2**i){tmp[i+1][WIDTH-1]}},tmp[i+1][WIDTH-1:(2**i)]} : tmp[i+1];
-      MUX #(.N(WIDTH)) u_MUX(.A(tmp[i+1]),.B({{(2**i){tmp[i+1][WIDTH-1]}},tmp[i+1][WIDTH-1:(2**i)]}),.S(shift[i]), .O(tmp[i]));
+    for (i = 0; i < CTRL; i = i + 1) begin: mux
+      assign tmp[i] = shift[i] ? {tmp[i+1][(2**i)-1], {(2**i){sign}}, tmp[i+1][WIDTH-1:(2**i)]} : tmp[i+1];
     end
   endgenerate
 endmodule
+
 
 module lsr_struct
 #( 
@@ -321,18 +314,18 @@ module lsr_struct
 ( 
   input   [WIDTH-1:0] in,
   input   [ CTRL-1:0] shift,
-  output  [WIDTH-1:0] out 
+  output  [WIDTH:0] out 
 );
 
-  wire [WIDTH-1:0] tmp [CTRL:0];
-  assign tmp[CTRL] = in;
+  wire sign = 1'b0;
+
+  wire [WIDTH:0] tmp [CTRL:0];
+  assign tmp[CTRL] = {in[0], in};
   assign out = tmp[0];
   genvar i;
   generate
-    for (i = 0; i < CTRL; i = i + 1) 
-    begin: mux
-      //assign tmp[i] = shift[i] ? {{(2**i){1'b0}},tmp[i+1][WIDTH-1:(2**i)]} : tmp[i+1];
-      MUX #(.N(WIDTH)) u_MUX(.A(tmp[i+1]),.B({{(2**i){1'b0}},tmp[i+1][WIDTH-1:(2**i)]}),.S(shift[i]), .O(tmp[i]));
+    for (i = 0; i < CTRL; i = i + 1) begin: mux
+      assign tmp[i] = shift[i] ? {tmp[i+1][(2**i)-1], {(2**i){sign}}, tmp[i+1][WIDTH-1:(2**i)]} : tmp[i+1];
     end
   endgenerate
 endmodule
@@ -345,18 +338,16 @@ module lsl_struct
 ( 
   input   [WIDTH-1:0] in,
   input   [ CTRL-1:0] shift,
-  output  [WIDTH-1:0] out 
+  output  [WIDTH:0] out 
 );
 
   wire [WIDTH-1:0] tmp [CTRL:0];
-  assign tmp[CTRL] = in;
+  assign tmp[CTRL] = {in[WIDTH-1], in};
   assign out = tmp[0];
-  genvar i;
+  genvar i, j;
   generate
-    for (i = 0; i < CTRL; i = i + 1) 
-    begin: mux
-      //assign tmp[i] = shift[i] ? {tmp[i+1][WIDTH-(2**i)-1:0], {(2**i){1'b0}}} : tmp[i+1];
-      MUX #(.N(WIDTH)) u_MUX(.A(tmp[i+1]),.B({tmp[i+1][WIDTH-(2**i)-1:0], {(2**i){1'b0}}}),.S(shift[i]), .O(tmp[i]));
+    for (i = 0; i < CTRL; i = i + 1) begin: mux
+      assign tmp[i] = shift[i] ? {tmp[i+1][WIDTH-(2**i)], tmp[i+1][WIDTH-(2**i)-1:0], {(2**i){1'b0}}} : tmp[i+1];
     end
   endgenerate
 endmodule

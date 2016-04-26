@@ -54,7 +54,7 @@ endgenerate
 
 
 wire [23:0] trunc_m_address;
-assign trunc_m_address = i_m_address[23:0];
+assign trunc_m_address = {i_m_address[23:2], 2'b0};
 
 assign  o_m_read =  (i_m_address[31:24] == 8'h00) ? {p_mem[trunc_m_address+3], p_mem[trunc_m_address+2], p_mem[trunc_m_address+1], p_mem[trunc_m_address]}  ://Code:  0x00000000
                     (i_m_address[31:24] == 8'h01) ? {g_mem[trunc_m_address+3], g_mem[trunc_m_address+2], g_mem[trunc_m_address+1], g_mem[trunc_m_address]}  ://AdrGarbler: 0x01000000
