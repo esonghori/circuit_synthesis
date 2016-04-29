@@ -946,7 +946,7 @@ always @ ( posedge i_clk  or posedge i_rst)
         o_reg_bank_wen              <= 'd0;
         o_status_bits_flags_wen     <= 'd0;
         mtrans_r15                  <= 'd0;
-        control_state               <= RST_WAIT1;
+        control_state               <= RST_WAIT2;
         mtrans_reg_d1               <= 'd0;
         mtrans_reg_d2               <= 'd0;
     end else begin
