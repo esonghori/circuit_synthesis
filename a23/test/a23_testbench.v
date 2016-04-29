@@ -65,9 +65,9 @@ begin
   rst = 1;
   cc = 0;
 
-  $readmemh("../../TinyGarble/a23/temp/p.txt", p_init_reg);
-  $readmemh("../../TinyGarble/a23/temp/test/g.txt", g_init_reg);
-  $readmemh("../../TinyGarble/a23/temp/test/e.txt", e_init_reg);
+  $readmemh("../../TinyGarble/a23/aes/p.txt", p_init_reg);
+  $readmemh("../../TinyGarble/a23/aes/test/g.txt", g_init_reg);
+  $readmemh("../../TinyGarble/a23/aes/test/e.txt", e_init_reg);
   #28
   rst = 0;
   while (~terminate) begin
