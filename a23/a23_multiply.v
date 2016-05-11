@@ -64,100 +64,107 @@ input                       i_execute,
 
 output      [31:0]          o_out,
 output      [1:0]           o_flags,        // [1] = N, [0] = Z
-output reg                  o_done    // goes high 2 cycles before completion                                          
+output                      o_done    // goes high 2 cycles before completion                                          
 );
 
 
 wire        enable;
 wire        accumulate;
-wire [33:0] multiplier;
-wire [33:0] multiplier_bar;
-wire [33:0] sum;
-wire [33:0] sum34_b;
-
-reg  [5:0]  count;
-reg  [5:0]  count_nxt;
-reg  [67:0] product;
-reg  [67:0] product_nxt;
-reg  [1:0]  flags_nxt;
-wire [32:0] sum_acc1;           // the MSB is the carry out for the upper 32 bit addition
 
 
 assign enable         = i_function[0];
 assign accumulate     = i_function[1];
+
+assign o_out   = (enable && accumulate)  ? (i_a_in*i_b_in + i_a_in) :
+                 (enable && !accumulate) ? (i_a_in*i_b_in)          :
+                                           32'b0;
+
+assign o_flags = {o_out[31], o_out == 32'd0 }; 
+assign o_done  = 1'b1;
+
+// wire [33:0] multiplier;
+// wire [33:0] multiplier_bar;
+// wire [33:0] sum;
+// wire [33:0] sum34_b;
+
+// reg  [5:0]  count;
+// reg  [5:0]  count_nxt;
+// reg  [67:0] product;
+// reg  [67:0] product_nxt;
+// reg  [1:0]  flags_nxt;
+// wire [32:0] sum_acc1;           // the MSB is the carry out for the upper 32 bit addition
+// assign multiplier     =  { 2'd0, i_a_in} ;
+// assign multiplier_bar = ~{ 2'd0, i_a_in} + 34'd1 ;
+
+// assign sum34_b        =  product[1:0] == 2'b01 ? multiplier     :
+//                          product[1:0] == 2'b10 ? multiplier_bar :
+//                                                  34'd0          ;
+
+
+// // -----------------------------------
+// // 34-bit adder - booth multiplication
+// // -----------------------------------
+// assign sum =  product[67:34] + sum34_b;
  
-assign multiplier     =  { 2'd0, i_a_in} ;
-assign multiplier_bar = ~{ 2'd0, i_a_in} + 34'd1 ;
-
-assign sum34_b        =  product[1:0] == 2'b01 ? multiplier     :
-                         product[1:0] == 2'b10 ? multiplier_bar :
-                                                 34'd0          ;
+// // ------------------------------------
+// // 33-bit adder - accumulate operations
+// // ------------------------------------
+// assign sum_acc1 = {1'd0, product[32:1]} + {1'd0, i_a_in};
 
 
-// -----------------------------------
-// 34-bit adder - booth multiplication
-// -----------------------------------
-assign sum =  product[67:34] + sum34_b;
- 
-// ------------------------------------
-// 33-bit adder - accumulate operations
-// ------------------------------------
-assign sum_acc1 = {1'd0, product[32:1]} + {1'd0, i_a_in};
-
-
-always @*
-begin
-  // Defaults
-  count_nxt           = count;
-  product_nxt         = product;
+// always @*
+// begin
+//   // Defaults
+//   count_nxt           = count;
+//   product_nxt         = product;
   
-  // update Negative and Zero flags
-  // Use registered value of product so this adds an extra cycle
-  // but this avoids having the 64-bit zero comparator on the
-  // main adder path
-  flags_nxt   = { product[32], product[32:1] == 32'd0 }; 
+//   // update Negative and Zero flags
+//   // Use registered value of product so this adds an extra cycle
+//   // but this avoids having the 64-bit zero comparator on the
+//   // main adder path
+//   flags_nxt   = { product[32], product[32:1] == 32'd0 }; 
     
 
-  if ( count == 6'd0 )
-    product_nxt = {33'd0, 1'd0, i_b_in, 1'd0 } ;
-  else if ( count <= 6'd33 )
-    product_nxt = { sum[33], sum, product[33:1]} ;
-  else if ( count == 6'd34 && accumulate )
-  begin
-    // Note that bit 0 is not part of the product. It is used during the booth
-    // multiplication algorithm
-    product_nxt         = { product[64:33], sum_acc1[31:0], 1'd0}; // Accumulate
-  end
+//   if ( count == 6'd0 )
+//     product_nxt = {33'd0, 1'd0, i_b_in, 1'd0 } ;
+//   else if ( count <= 6'd33 )
+//     product_nxt = { sum[33], sum, product[33:1]} ;
+//   else if ( count == 6'd34 && accumulate )
+//   begin
+//     // Note that bit 0 is not part of the product. It is used during the booth
+//     // multiplication algorithm
+//     product_nxt         = { product[64:33], sum_acc1[31:0], 1'd0}; // Accumulate
+//   end
         
-  // Multiplication state counter
-  if (count == 6'd0)  // start
-    count_nxt   = enable ? 6'd1 : 6'd0;
-  else if ((count == 6'd34 && !accumulate) ||  // MUL
-           (count == 6'd35 &&  accumulate)  )  // MLA
-    count_nxt   = 6'd0;
-  else
-    count_nxt   = count + 1'd1;
+//   // Multiplication state counter
+//   if (count == 6'd0)  // start
+//     count_nxt   = enable ? 6'd1 : 6'd0;
+//   else if ((count == 6'd34 && !accumulate) ||  // MUL
+//            (count == 6'd35 &&  accumulate)  )  // MLA
+//     count_nxt   = 6'd0;
+//   else
+//     count_nxt   = count + 1'd1;
 
-end
+// end
 
 
-  always @ ( posedge i_clk or posedge i_rst)
-  if (i_rst) begin
-    product         <= 'd0;
-    count           <= 'd0;
-    o_done          <= 'd0;
-  end else if (enable)
-  begin 
-    if(i_execute) begin
-          product         <= product_nxt;
-    end
-    count           <= count_nxt;
-    o_done          <= count == 6'd31;
-  end
+//   always @ ( posedge i_clk or posedge i_rst)
+//   if (i_rst) begin
+//     product         <= 'd0;
+//     count           <= 'd0;
+//     o_done          <= 'd0;
+//   end else if (enable)
+//   begin 
+//     if(i_execute) begin
+//           product         <= product_nxt;
+//     end
+//     count           <= count_nxt;
+//     o_done          <= count == 6'd31;
+//   end
 
 // Outputs
-assign o_out   = product[32:1]; 
-assign o_flags = flags_nxt;
+// assign o_out   = product[32:1]; 
+// assign o_flags = flags_nxt;
                      
 endmodule
 

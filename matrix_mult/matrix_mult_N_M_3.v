@@ -20,7 +20,7 @@ module matrix_mult_N_M_3
 	wire [2*M-1:0] xy;
 	wire [M-1:0] oi;
 	
-	//assign xy = g_input*e_input;
+	// assign xy = g_input*e_input;
 	MULT 
 	#(
 		.N(M)
@@ -33,6 +33,7 @@ module matrix_mult_N_M_3
 	);
 
 
+  // assign oi = xy[M-1:0] + o;
 	ADD 
 	#(
 		.N(M)

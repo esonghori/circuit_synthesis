@@ -24,34 +24,42 @@ module mult
   wire [N+N/CC-1:0] clocal;
 
   assign clocal = g_input*e_input;
-  //MULT
+
+  // MULT 
+  // #(
+  //   .N(N), 
+  //   .M(N/CC)
+  // ) u_MULT ( 
+  //   .A(g_input),
+  //   .B(e_input),
+  //   .O(clocal)
+  // );  
 
 
 
   generate
-  if(CC>1)
+  if(CC>1) begin:g1
     assign swire  = sreg + {clocal,{(N-N/CC){1'b0}}};
+  end 
   endgenerate
 
   generate
-  if(CC>1)
-    always@(posedge clk or posedge rst)
-    begin
-      if(rst)
-      begin
+  if(CC>1) begin:g2
+    always@(posedge clk or posedge rst) begin
+      if(rst) begin
         sreg <= 'b0;
-      end
-      else
-      begin
+      end else begin
         sreg <= {{N/CC{1'b0}},swire[2*N-1:N/CC]};     
       end
     end
+  end
   endgenerate
 
   generate 
-  if(CC>1)
+  if(CC>1) begin :g3
     assign o = swire;
-  else
+  end else begin :g4
     assign o = clocal;
+  end
   endgenerate
 endmodule

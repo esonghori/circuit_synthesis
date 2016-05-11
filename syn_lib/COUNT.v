@@ -32,28 +32,20 @@ module COUNT
 	wire 	[K2-1:0] 	S2;
 
 	generate
-		if(K2==0)
-		begin
+		if(K2==0) begin: g1
 			assign S2pad = {(K-1){1'b0}};
-		end
-		else if (K-K2-1>0) 
-		begin
+		end else if (K-K2-1>0) begin: g2
 			assign S2pad = {{(K-K2-1){1'b0}}, S2};
-		end
-		else 
-		begin
+		end else begin: g3
 			assign S2pad = S2;
 		end
 	endgenerate
 
 
-    generate 
-    if(N==1)
-    begin
-    	assign S=A[0];
-    end
-	else if(N==2)
-	begin
+  generate 
+  if(N==1) begin: g4
+  	assign S=A[0];
+  end else if(N==2) begin: g5
 		ADD
 		#(
 			.N(1)
@@ -66,9 +58,7 @@ module COUNT
 			.S(S[0]),
 			.CO(S[1])
 		);
-	end
-    else if(N==3)
-    begin
+	end else if(N==3) begin: g6
 		ADD
 		#(
 			.N(1)
@@ -81,10 +71,8 @@ module COUNT
 			.S(S[K-2:0]),
 			.CO(S[K-1])
 		);
-    end
-    else if (N>3)
-    begin
-	    COUNT
+  end else if (N>3) begin: g7
+	  COUNT
 		#(
 			.N(2**(K-1)-1)
 		)
@@ -93,9 +81,7 @@ module COUNT
 			.A(A[N-1:N-2**(K-1)+1]),
 			.S(S1)
 		);
-
-		if(N-2**(K-1)>0)
-		begin
+		if(N-2**(K-1)>0) begin: g8
 			COUNT
 			#(
 				.N(N-2**(K-1))
@@ -120,5 +106,5 @@ module COUNT
 			.CO(S[K-1])
 		);
     end
-    endgenerate
+  endgenerate
 endmodule
