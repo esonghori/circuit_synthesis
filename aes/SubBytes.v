@@ -1,3 +1,150 @@
+module gf_2_4_square(
+	output [7:0] q, 
+	input [7:0] a
+	);
+	assign q[0] = a[0]^a[2];
+	assign q[1] = a[2];
+	assign q[2] = a[1]^a[3];
+	assign q[3] = a[3];
+endmodule
+
+module gf_2_4_mult(
+	output [7:0] q, 
+	input [7:0] a,b
+	);
+	wire [7:0] t;
+	assign t[0] = a[0]^a[3];
+	assign t[1] = a[2]^a[3];
+	assign t[2] = a[1]^a[2];
+	
+	assign q[0] = (a[0]&b[0])^(a[3]&b[1])^(a[2]&b[2])^(a[1]&b[3]);
+	assign q[1] = (a[1]&b[0])^(t[0]&b[1])^(t[1]&b[2])^(t[2]&b[3]);
+	assign q[2] = (a[2]&b[0])^(a[1]&b[1])^(t[0]&b[2])^(t[1]&b[3]);
+	assign q[3] = (a[3]&b[0])^(a[2]&b[1])^(a[1]&b[2])^(t[0]&b[3]);
+endmodule
+
+module gf_2_4_inv(
+	output [7:0] q, 
+	input [7:0] a
+	);
+	wire [7:0] t;
+	assign t[0] = a[1]^a[2]^a[3]^(a[1]&a[2]&a[3]);
+	
+	assign q[0] =  t[0]^a[0]^(a[0]&a[2])^(a[1]&a[2])^(a[0]&a[1]&a[2]);
+	assign q[1] = (a[0]&a[1])^(a[0]&a[2])^(a[1]&a[2])^a[3]^(a[1]&a[3])^(a[0]&a[1]&a[3]);
+	assign q[2] = (a[0]&a[1])^a[2]^(a[0]&a[2])^a[3]^(a[0]&a[3])^(a[0]&a[2]&a[3]);
+	assign q[3] =  t[0]^(a[0]&a[3])^(a[1]&a[3])^(a[2]&a[3]);
+endmodule
+
+module gf_2_4_mult_e(
+	output [7:0] q, 
+	input [7:0] a
+	);
+	wire [7:0] t;
+	assign t[0] = a[0]^a[1];
+	assign t[1] = a[2]^a[3];
+	
+	assign q[0] = a[1]^t[1];
+	assign q[1] = t[0];
+	assign q[2] = t[0]^a[2];
+	assign q[3] = t[0]^t[1];
+endmodule
+
+module gf_map_2_8_to_2_4(
+	output [7:0] al, 
+	output [7:0] ah, 
+	input [7:0] a
+	);
+	wire [7:0] t;	
+	assign t[0] = a[1]^a[7];
+	assign t[1] = a[5]^a[7];
+	assign t[2] = a[4]^a[6];
+	
+	assign al[0] = t[2]^a[0]^a[5];
+	assign al[1] = a[1]^a[2];
+	assign al[2] = t[0];
+	assign al[3] = a[2]^a[4];
+	
+	assign ah[0] = t[2]^a[5];
+	assign ah[1] = t[0]^t[2];
+	assign ah[2] = t[1]^a[2]^a[3];
+	assign ah[3] = t[1];
+endmodule
+
+module gf_map_2_4_to_2_8(
+	output [7:0] a, 
+	input [7:0] al, ah
+	);
+	wire [7:0] t;	
+	assign t[0] = al[1]^ah[3];
+	assign t[1] = ah[0]^ah[1];
+	
+	assign a[0] = al[0]^ah[0];
+	assign a[1] = t[1]^ah[3];
+	assign a[2] = t[0]^t[1];
+	assign a[3] = t[1]^al[1]^ah[2];
+	assign a[4] = t[0]^t[1]^al[3];
+	assign a[5] = t[1]^al[2];
+	assign a[6] = t[0]^al[2]^al[3]^ah[0];
+	assign a[7] = t[1]^al[2]^ah[3];
+endmodule
+
+module gf_2_8_inv(
+	output [7:0] q, 
+	input [7:0] a
+	);
+	wire [7:0] al, ah, d, ah_sqr, ah_sqr_times_e, ah_times_al, al_sqr, d_inv, ah_prime, al_prime;
+	gf_map_2_8_to_2_4 gf_map_2_8_to_2_4_A(al, ah, a);
+
+	gf_2_4_square gf_2_4_square_A(ah_sqr, ah);
+	gf_2_4_mult_e gf_2_4_mult_e_A(ah_sqr_times_e, ah_sqr);
+	gf_2_4_mult gf_2_4_mult_A(ah_times_al, ah, al);
+	gf_2_4_square gf_2_4_square_B(al_sqr, al);	
+	assign d_inv = ah_sqr_times_e^ah_times_al^al_sqr;
+	gf_2_4_inv gf_2_4_inv_A(d, d_inv);
+
+	gf_2_4_mult gf_2_4_mult_B(ah_prime, ah, d);
+
+	wire [7:0] ah_xor_al;
+	assign ah_xor_al = ah^al;
+	gf_2_4_mult gf_2_4_mult_C(al_prime, ah_xor_al, d);
+
+	
+	gf_map_2_4_to_2_8 gf_map_2_4_to_2_8_A(q, al_prime, ah_prime);	
+endmodule
+
+module aff_trans(
+	output [7:0] q, 
+	input [7:0] a
+	);
+	wire [7:0] t;
+	assign t[0] = a[0]^a[1];
+	assign t[1] = a[2]^a[3];
+	assign t[2] = a[4]^a[5];
+	assign t[3] = a[6]^a[7];
+	
+	assign q[0] = (~a[0])^t[2]^t[3];
+	assign q[1] = (~a[5])^t[0]^t[3];
+	assign q[2] = a[2]^t[0]^t[3];
+	assign q[3] = a[7]^t[0]^t[1];
+	assign q[4] = a[4]^t[0]^t[1];
+	assign q[5] = (~a[1])^t[1]^t[2];
+	assign q[6] = (~a[6])^t[1]^t[2];
+	assign q[7] = a[3]^t[2]^t[3];
+endmodule
+ 
+module sbox(
+	output [7:0] SubByte,
+	input [7:0] num
+	);
+	wire [7:0] a_inv;
+
+	gf_2_8_inv gf_2_8_inv_A(a_inv, num);
+	aff_trans aff_trans_A(SubByte, a_inv);
+
+endmodule
+
+
 module SubBytes(
 x,
 z);
@@ -5,7 +152,7 @@ z);
   input [127:0] x;
   output [127:0] z;
 
-  function [7:0] sbox;
+/*  function [7:0] sbox;
     input[7:0] address;
     begin
       case (address)
@@ -269,12 +416,13 @@ z);
       endcase
     end
   endfunction
-
+*/
 
   generate
     genvar i;
     for (i = 0; i < 16; i = i + 1) begin:SBOX
-      assign z[8*(i+1)-1:8*i] = sbox(x[8*(i+1)-1:8*i]);
+      //assign z[8*(i+1)-1:8*i] = sbox(x[8*(i+1)-1:8*i]);
+	  sbox sbox(z[8*(i+1)-1:8*i], x[8*(i+1)-1:8*i]);
     end
   endgenerate
 

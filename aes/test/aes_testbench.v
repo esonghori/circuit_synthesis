@@ -12,7 +12,7 @@ module aes_testbench();
   wire [127:0] e_input;
   wire [127:0] o;
 
-  aes_comb utt_aes_comb
+  aes_1cc utt_aes_comb
   (
     .clk(clk),
     .rst(rst),
@@ -46,7 +46,7 @@ module aes_testbench_seq();
   wire [127:0] e_init;
   wire [127:0] o;
 
-  aes_seq utt_aes_seq
+  aes_11cc utt_aes_seq
   (
     .clk(clk),
     .rst(rst),
