@@ -28,12 +28,17 @@ module gf_2_4_inv(
 	input [7:0] a
 	);
 	wire [7:0] t;
-	assign t[0] = a[1]^a[2]^a[3]^(a[1]&a[2]&a[3]);
+	assign t[0] = a[1]^a[2]^a[3]^(t[3]&a[3]);
+	assign t[1] = a[0]&a[1];
+	assign t[2] = a[0]&a[2];
+	assign t[3] = a[1]&a[2];
+	assign t[4] = a[1]&a[3];
+	assign t[5] = a[0]&a[3];
 	
-	assign q[0] =  t[0]^a[0]^(a[0]&a[2])^(a[1]&a[2])^(a[0]&a[1]&a[2]);
-	assign q[1] = (a[0]&a[1])^(a[0]&a[2])^(a[1]&a[2])^a[3]^(a[1]&a[3])^(a[0]&a[1]&a[3]);
-	assign q[2] = (a[0]&a[1])^a[2]^(a[0]&a[2])^a[3]^(a[0]&a[3])^(a[0]&a[2]&a[3]);
-	assign q[3] =  t[0]^(a[0]&a[3])^(a[1]&a[3])^(a[2]&a[3]);
+	assign q[0] =  t[0]^a[0]^t[2]^t[3]^(t[1]&a[2]);
+	assign q[1] =  t[1]^t[2]^t[3]^a[3]^t[4]^(t[1]&a[3]);
+	assign q[2] =  t[1]^a[2]^t[2]^a[3]^t[5]^(t[2]&a[3]);
+	assign q[3] =  t[0]^t[5]^t[4]^(a[2]&a[3]);
 endmodule
 
 module gf_2_4_mult_e(
