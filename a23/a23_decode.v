@@ -109,8 +109,8 @@ localparam [4:0] RST_WAIT1      = 5'd0,
                  //MTRANS5_ABORT  = 5'd15,
                  MULT_PROC1     = 5'd16,  // first cycle, save pre fetch instruction
                  MULT_PROC2     = 5'd17,  // do multiplication
-                 MULT_STORE     = 5'd19,  // save RdLo
-                 MULT_ACCUMU    = 5'd20;  // Accumulate add lower 32 bits
+                 MULT_STORE     = 5'd19;  // save RdLo
+                 //MULT_ACCUMU    = 5'd20;  // Accumulate add lower 32 bits
                  //SWAP_WRITE     = 5'd22,
                  //SWAP_WAIT1     = 5'd23,
                  //SWAP_WAIT2     = 5'd24,
@@ -239,7 +239,7 @@ assign use_saved_current_instruction = ( control_state == MEM_WAIT1     ||
                                          control_state == MTRANS_EXEC4  ||
                                          control_state == MULT_PROC1    ||
                                          control_state == MULT_PROC2    ||
-                                         control_state == MULT_ACCUMU   ||
+                                         //control_state == MULT_ACCUMU   ||
                                          control_state == MULT_STORE    );
 
 assign use_pre_fetch_instruction = control_state == PRE_FETCH_EXEC;
@@ -809,24 +809,13 @@ always @(*)
         reg_write_sel_nxt     = 3'd2; // multiply_out
         multiply_function_nxt = o_multiply_function;
 
-        if ( itype == MULT ) // 32-bit
-            reg_bank_wsel_nxt      = instruction[19:16]; // Rd
-        else  // 64-bit / Long
-            reg_bank_wsel_nxt      = instruction[15:12]; // RdLo
-
+        reg_bank_wsel_nxt      = instruction[19:16]; // Rd
+     
         if ( instruction[20] ) begin // the 'S' bit
             status_bits_sel_nxt       = 3'd4; // { multiply_flags, status_bits_flags[1:0] }
             status_bits_flags_wen_nxt = 1'd1;
         end
     end
-
-        // Add lower 32 bits to multiplication product
-    if ( control_state == MULT_ACCUMU ) begin
-        multiply_function_nxt = o_multiply_function;
-        pc_wen_nxt            = 1'd0;  // hold current PC value
-        address_sel_nxt       = 4'd3;  // pc  (not pc + 4)
-    end
-
 end
 
 
@@ -885,12 +874,7 @@ assign instruction_valid = (control_state == EXECUTE || control_state == PRE_FET
         control_state_nxt = MULT_PROC2;
     end else if ( control_state == MULT_PROC2 ) begin
         if ( i_multiply_done )
-            if      ( o_multiply_function[1] )  // Accumulate ?
-                control_state_nxt = MULT_ACCUMU;
-            else
-                control_state_nxt = MULT_STORE;
-    end else if ( control_state == MULT_ACCUMU ) begin
-        control_state_nxt = MULT_STORE;
+            control_state_nxt = MULT_STORE;
     end else if ( instruction_valid ) begin
         control_state_nxt = EXECUTE;
 
