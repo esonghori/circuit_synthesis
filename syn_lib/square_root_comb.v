@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
- module square_root_comb #(parameter N = 8, M = 16)(
+ module square_root_comb #(parameter N = 8, M = N/2)(
 	input 			[N-1:0]		A,
 	output			[N/2-1:0]	O
 	);
@@ -23,9 +23,79 @@
 			.y0_in(Y0[gv]),
 			.y(Y[gv+1]), 
 			.y0(Y0[gv+1])
-);
+		);
 	end
-	endgenerate
+	endgenerate	
+	
+endmodule
+
+module square_root_seq #(parameter N = 8, M = N/2)(
+	input 							clk,
+	input 							rst,
+	input 							start,
+	input 			[N-1:0]		A,
+	output	reg	[N/2-1:0]	O,
+	output	reg					ready
+	);
+	
+	function integer log2;
+	input integer value;
+	begin
+	value = value-1;
+	for (log2=0; value>0; log2=log2+1)
+	value = value>>1;
+	end
+	endfunction
+	
+	localparam L = log2(M);
+	
+				reg	[N-1:0]		x;
+				reg	[N/2-1:0]	y_in, y0_in;
+				wire	[N/2-1:0]	y, y0;	
+
+	squar_root_unit #(.N(N)) squar_root_unit(
+		.x(x),
+		.y_in(y_in), 
+		.y0_in(y0_in),
+		.y(y), 
+		.y0(y0)
+	);
+	
+	reg [1:0] state;
+	reg [L-1:0] count;
+	
+	always @(posedge clk) begin
+		if(rst) begin
+			state <= 2'b00;
+		end
+		else begin
+			case(state)
+				2'b00: begin
+					state <= {1'b0,start};
+				end		
+				2'b01: begin
+					ready <= 1'b0;
+					x <= A;
+					y_in <= {1'b1,{(N/2-1){1'b0}}};
+					y0_in <= {1'b1,{(N/2-1){1'b0}}};
+					count <= 0;	
+					state <= 2'b10; 					
+				end		
+				2'b10: begin
+					y_in <= y;
+					y0_in <= y0;
+					count <= count + 1;
+					if (count == M-1) state <= 2'b11;
+				end		
+				2'b11: begin
+					ready <= 1'b1;
+					O = y;
+					state <= 2'b00;
+				end
+			endcase
+		end		
+	end
+
 	
 	
 endmodule
