@@ -64,9 +64,15 @@ module square_root_seq #(parameter N = 8, M = N/2)(
 	reg [1:0] state;
 	reg [L-1:0] count;
 	
-	always @(posedge clk) begin
+	always @(posedge clk or posedge rst) begin
 		if(rst) begin
-			state <= 2'b00;
+			state	<= 2'b00;
+			O		<= 0;
+			ready	<= 0;
+			x		<= 0;
+			y_in	<= 0;
+			y0_in	<= 0;
+			count	<= 0;
 		end
 		else begin
 			case(state)
@@ -89,7 +95,7 @@ module square_root_seq #(parameter N = 8, M = N/2)(
 				end		
 				2'b11: begin
 					ready <= 1'b1;
-					O = y;
+					O <= y;
 					state <= 2'b00;
 				end
 			endcase
