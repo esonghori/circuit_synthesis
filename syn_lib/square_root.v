@@ -91,13 +91,12 @@ module square_root_seq #(parameter N = 8, M = N/2)(
 					y_in <= y;
 					y0_in <= y0;
 					count <= count + 1;
-					if (count == M-1) state <= 2'b11;
-				end		
-				2'b11: begin
-					ready <= 1'b1;
-					O <= y;
-					state <= 2'b00;
-				end
+					if (count == M-1) begin
+						ready <= 1'b1;
+						O <= y;
+						state <= 2'b00;
+					end
+				end	
 			endcase
 		end		
 	end
