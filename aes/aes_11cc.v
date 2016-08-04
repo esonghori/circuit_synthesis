@@ -41,9 +41,10 @@ module aes_11cc
       counter <= 0;
     end else begin
       msg <= add_round_key_out;
-      key <= nextKey;
       counter <= counter + 1;
-    end
+      if(counter < 10)
+        key <= nextKey;
+      end
   end
 
   reg [1:0] addr_sel;
