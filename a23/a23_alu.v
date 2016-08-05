@@ -118,7 +118,20 @@ assign  overflow_out    = out_sel == 4'd1 &&
 // ALU Operations
 // ========================================================
 
-assign fadder_out       = { 1'd0,a} + {1'd0,b_not} + {32'd0,carry_in};
+//assign fadder_out       = { 1'd0,a} + {1'd0,b_not} + {32'd0,carry_in};
+ADD 
+#(
+  .N(31)
+)
+ADDER
+(
+  .A(a),
+  .B(b_not),
+  .CI(carry_in),
+  .S(fadder_out[31:0]),
+  .CO(fadder_out[32])
+);
+
 assign fadder_carry_out = fadder_out[32];
 assign and_out          = a & b_not;
 assign or_out           = a | b_not;
