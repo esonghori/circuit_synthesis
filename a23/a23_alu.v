@@ -146,7 +146,7 @@ wire only_carry;
 assign only_carry = (out_sel == 4'd1)  && (cin_sel == 2'd2);
 
 assign o_flags = only_carry ?
-                 {0, 0, carry_out, 0 }:
+                 {1'b0, 1'b0, carry_out, 1'b0}:
                  {
                  o_out[31],      // negative
                  |o_out == 1'd0,  // zero

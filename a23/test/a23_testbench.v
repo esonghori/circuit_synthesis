@@ -2,11 +2,12 @@
 
 module a23_testbench();
 
-localparam CODE_MEM_SIZE  = 512; //_start:    0x00000000
+localparam CODE_MEM_SIZE  = 64; //_start:    0x00000000
 localparam G_MEM_SIZE     = 64; //AdrAliceX: 0x01000000
 localparam E_MEM_SIZE     = 64; //AdrBobY:   0x02000000
 localparam OUT_MEM_SIZE   = 64; //AdrOutZ:   0x03000000
 localparam STACK_MEM_SIZE = 64; //AdrStack:  0x04000100
+localparam TEST_NAME      = "sum";
 
 reg                            clk;
 reg                            rst;
@@ -19,15 +20,16 @@ wire                           terminate;
 genvar i;
 integer cc;
 
-a23_gc_main 
-#
-(
-  .CODE_MEM_SIZE   ( CODE_MEM_SIZE  ),
-  .G_MEM_SIZE      ( G_MEM_SIZE     ),
-  .E_MEM_SIZE      ( E_MEM_SIZE     ),
-  .OUT_MEM_SIZE    ( OUT_MEM_SIZE   ),
-  .STACK_MEM_SIZE  ( STACK_MEM_SIZE )
-)
+a23_gc_main_CODE_MEM_SIZE64_G_MEM_SIZE64_E_MEM_SIZE64_OUT_MEM_SIZE64_STACK_MEM_SIZE64
+// a23_gc_main 
+// #
+// (
+//   .CODE_MEM_SIZE   ( CODE_MEM_SIZE  ),
+//   .G_MEM_SIZE      ( G_MEM_SIZE     ),
+//   .E_MEM_SIZE      ( E_MEM_SIZE     ),
+//   .OUT_MEM_SIZE    ( OUT_MEM_SIZE   ),
+//   .STACK_MEM_SIZE  ( STACK_MEM_SIZE )
+// )
 u_a23_gc_main
 (
   .clk       ( clk       ), 
@@ -65,16 +67,16 @@ begin
   rst = 1;
   cc = 0;
 
-  $readmemh("../../TinyGarble/a23/matrix-mul/p.txt", p_init_reg);
-  $readmemh("../../TinyGarble/a23/matrix-mul/test/g.txt", g_init_reg);
-  $readmemh("../../TinyGarble/a23/matrix-mul/test/e.txt", e_init_reg);
+  $readmemh($sformatf("../../TinyGarble/a23/%s/p.txt", TEST_NAME),      p_init_reg);
+  $readmemh($sformatf("../../TinyGarble/a23/%s/test/g.txt", TEST_NAME), g_init_reg);
+  $readmemh($sformatf("../../TinyGarble/a23/%s/test/e.txt", TEST_NAME), e_init_reg);
   #28
   rst = 0;
   while (~terminate) begin
     @(posedge clk);
     cc = cc +1;
   end
-  $writememh("./o.txt.out", o_word_wire);
+  $writememh("./o.txt", o_word_wire);
   $display("Terminate at %dcc\n", cc);
   $stop;
 end

@@ -4,8 +4,13 @@ rm -f o.txt
 rm -rf work transcript vsim.wlf
 vlib work
 
-vlog ../../syn_lib/MUX.v
-vlog ../*.v
+
+#vlog ../../syn_lib/MUX.v
+#vlog ../*.v
+
+vlog ../../lib/dff_full/dff_full.v
+vlog ../../TinyGarble/bin/scd/netlists/a23_gc_main_64_w_n_cc.v
+
 vlog a23_testbench.v
 
 #w/o gui
