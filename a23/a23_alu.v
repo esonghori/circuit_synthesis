@@ -41,12 +41,13 @@
 
 
 module a23_alu (
-
 input       [31:0]          i_a_in,
 input       [31:0]          i_b_in,
 input                       i_barrel_shift_carry,
 input                       i_status_bits_carry,
 input       [8:0]           i_function,
+input                       i_status_bits_flags_wen,
+
 
 output      [31:0]          o_out,
 output      [3:0]           o_flags       // negative, zero, carry, overflow
@@ -118,20 +119,7 @@ assign  overflow_out    = out_sel == 4'd1 &&
 // ALU Operations
 // ========================================================
 
-//assign fadder_out       = { 1'd0,a} + {1'd0,b_not} + {32'd0,carry_in};
-ADD 
-#(
-  .N(31)
-)
-ADDER
-(
-  .A(a),
-  .B(b_not),
-  .CI(carry_in),
-  .S(fadder_out[31:0]),
-  .CO(fadder_out[32])
-);
-
+assign fadder_out       = { 1'd0,a} + {1'd0,b_not} + {32'd0,carry_in};
 assign fadder_carry_out = fadder_out[32];
 assign and_out          = a & b_not;
 assign or_out           = a | b_not;
@@ -154,11 +142,18 @@ assign o_out = out_sel == 4'd0 ? b_not            :
                out_sel == 4'd7 ? or_out           :
                                  and_out          ;
 
-assign o_flags       = {  o_out[31],      // negative
-                         |o_out == 1'd0,  // zero
-                         carry_out,       // carry
-                         overflow_out     // overflow
-                         };
+wire only_carry;
+// activate for adcs
+assign only_carry = (out_sel == 4'd1)  && (cin_sel == 2'd2) && (i_status_bits_flags_wen == 1'd1);
+
+assign o_flags = only_carry?
+                 {0, 0, carry_out, 0 }:
+                 {
+                 o_out[31],      // negative
+                 |o_out == 1'd0,  // zero
+                 carry_out,       // carry
+                 overflow_out     // overflow
+                 };
                          
                                      
 endmodule

@@ -4,7 +4,6 @@ set link_library ../lib/dff_full/dff_full.db
 set symbol_library ../lib/generic.sdb
 set hdlin_while_loop_iterations 16384
 
-analyze -format verilog {../syn_lib/FA.v ../syn_lib/ADD.v}
 analyze -format verilog {a23_alu.v a23_decode.v a23_fetch.v  a23_register_bank.v a23_barrel_shift.v  a23_execute.v a23_multiply.v a23_core.v a23_mem.v a23_gc_main.v}
 
 set CODE_MEM_SIZE  64
