@@ -39,7 +39,7 @@ module KeyExpansionSeq
 
   generate 
   for(i=0;i<4;i=i+1) begin:EXPANDKEY
-    assign w[i] = key[32*(i+1)-1:32*i];
+    assign w[i] = (counter<10)?key[32*(i+1)-1:32*i]:32'b0;
     assign nextKey[32*(i+1)-1:32*i] = wNext[i];
   end
   endgenerate
