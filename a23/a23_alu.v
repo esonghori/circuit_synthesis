@@ -46,7 +46,6 @@ input       [31:0]          i_b_in,
 input                       i_barrel_shift_carry,
 input                       i_status_bits_carry,
 input       [8:0]           i_function,
-input                       i_status_bits_flags_wen,
 
 
 output      [31:0]          o_out,
@@ -143,10 +142,10 @@ assign o_out = out_sel == 4'd0 ? b_not            :
                                  and_out          ;
 
 wire only_carry;
-// activate for adcs
-assign only_carry = (out_sel == 4'd1)  && (cin_sel == 2'd2) && (i_status_bits_flags_wen == 1'd1);
+// activate for adc
+assign only_carry = (out_sel == 4'd1)  && (cin_sel == 2'd2);
 
-assign o_flags = only_carry?
+assign o_flags = only_carry ?
                  {0, 0, carry_out, 0 }:
                  {
                  o_out[31],      // negative
