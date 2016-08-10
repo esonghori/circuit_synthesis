@@ -76,7 +76,7 @@ begin
     @(posedge clk);
     cc = cc +1;
   end
-  $writememh("./o.txt", o_word_wire);
+  $writememh("./o.txt.out", o_word_wire);
   $display("Terminate at %dcc\n", cc);
   $stop;
 end
