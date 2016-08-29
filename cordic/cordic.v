@@ -12,13 +12,10 @@ module cordic
 (
   clk,
   rst,
-  x,
-  y,
-  z,
-  a,
-  b,
-  c,
-  done
+  g_init,
+  e_init,
+  o,
+  terminate
 );
   
   localparam L = DEC + FRAC;
@@ -27,14 +24,18 @@ module cordic
 
   input clk;
   input rst;
-  input  [L-1:0] x;
-  input  [L-1:0] y;
-  input  [L-1:0] z;
-  output [L-1:0] a;
-  output [L-1:0] b;
-  output [L-1:0] c;
-  output done;
+  input [2*L-1:0] g_init; // {x, y}
+  input [2*L-1:0] e_init; // {z}
+  output [3*L-1:0] o;
+  output terminate;
 
+  wire  [L-1:0] a;
+  wire  [L-1:0] b;
+  wire  [L-1:0] c;
+  wire          done;
+
+  assign terminate = done;
+  assign o = {a, b, c};
 
   reg  [L-1:0] xi;
   reg  [L-1:0] yi;
@@ -171,9 +172,9 @@ module cordic
 
   always @(posedge clk or posedge rst) begin
     if (rst) begin
-      xi <= x;
-      yi <= y;
-      zi <= z;
+      xi <= g_init[2*L-1:L];
+      yi <= g_init[L-1:0];
+      zi <= e_init;
       iter <= 0;
     end else begin
       if(iter < ITER) begin

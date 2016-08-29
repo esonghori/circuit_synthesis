@@ -9,13 +9,17 @@ analyze -format verilog {../syn_lib/FA.v ../syn_lib/ADD.v ../syn_lib/MULT.v ../s
 
 analyze -format verilog {cordic.v alpha_table.v barrel_shifter_left.v}
 
-elaborate cordic -architecture verilog -library DEFAULT -update -parameters 2,14,1,0
+set DEC 2
+set FRAC 30
+set MOD 1
+set DIR 0
+elaborate cordic -architecture verilog -library DEFAULT -update -parameters $DEC,$FRAC,$MOD,$DIR
 set_max_area -ignore_tns 0 
 set_flatten false -design *
 set_structure false -design *
 set_resource_allocation area_only
 report_compile_options
 compile -ungroup_all -map_effort high -area_effort high -no_design_rule
-write -hierarchy -format verilog -output syn/cordic_2_14_CIR_ROT.v
+write -hierarchy -format verilog -output syn/cordic.v
 
 exit
