@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 
 // synopsys_ template
-module SHIFT_LEFT
+module SHIFT_RIGHT
 #(
   parameter N=16
 )
