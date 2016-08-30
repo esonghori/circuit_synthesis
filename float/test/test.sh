@@ -5,7 +5,7 @@ rm -rf work transcript vsim.wlf
 vlib work
 
 
-vlog ../float.v
+vlog ../float_add.v ../float_mul.v
 vlog float_test.v
 
 #w/o gui
