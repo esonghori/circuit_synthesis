@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 // synopsys_ template
 
-module float_mul(g, e, o);
+module float_div(g, e, o);
   parameter sig_width = 23;
   parameter exp_width = 8;
   parameter ieee_compliance = 0;
@@ -10,9 +10,9 @@ module float_mul(g, e, o);
   input  [sig_width+exp_width:0] e;
   output [sig_width+exp_width:0] o;
 
-  // Instance of DW_fp_mult
-  // more info: https://www.synopsys.com/dw/ipdir.php?c=DW_fp_mult
-  DW_fp_mult
+  // Instance of DW_fp_div
+  // more info: https://www.synopsys.com/dw/ipdir.php?c=DW_fp_div
+  DW_fp_div
   #(
     sig_width,
     exp_width,
