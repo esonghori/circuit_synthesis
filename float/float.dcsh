@@ -5,7 +5,7 @@ set symbol_library [concat ../lib/generic.sdb]
 set synthetic_library [concat standard.sldb dw_foundation.sldb $synthetic_library]
 set hdlin_while_loop_iterations 1024
 
-analyze -format verilog {float_add.v float_mul.v float_cmp.v}
+analyze -format verilog {float_add.v float_mul.v float_cmp.v float_div.v}
 
 elaborate float_add -architecture verilog -library DEFAULT -update
 set_max_area -ignore_tns 0
