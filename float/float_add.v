@@ -1,13 +1,13 @@
 `timescale 1ns / 1ps
 // synopsys_ template
 
-module float_add(g, e, o);
+module float_add(g_input, e_input, o);
   parameter sig_width = 23;
   parameter exp_width = 8;
   parameter ieee_compliance = 0;
 
-  input  [sig_width+exp_width:0] g;
-  input  [sig_width+exp_width:0] e;
+  input  [sig_width+exp_width:0] g_input;
+  input  [sig_width+exp_width:0] e_input;
   output [sig_width+exp_width:0] o;
 
   // Instance of DW_fp_add
@@ -20,8 +20,8 @@ module float_add(g, e, o);
   )
   U1
   (
-    .a(g),
-    .b(e),
+    .a(g_input),
+    .b(e_input),
     .rnd(3'b0), // rounding mode
     .z(o),
     .status()

@@ -1,13 +1,13 @@
 `timescale 1ns / 1ps
 // synopsys_ template
 
-module float_cmp(g, e, o);
+module float_cmp(g_input, e_input, o);
   parameter sig_width = 23;
   parameter exp_width = 8;
   parameter ieee_compliance = 0;
 
-  input  [sig_width+exp_width:0] g;
-  input  [sig_width+exp_width:0] e;
+  input  [sig_width+exp_width:0] g_input;
+  input  [sig_width+exp_width:0] e_input;
   output [3:0] o; // {aeqb_inst, altb_inst, agtb_inst, unordered_inst}
 
 
@@ -28,8 +28,8 @@ module float_cmp(g, e, o);
   )
   U1
   (
-    .a(inst_a),
-    .b(inst_b),
+    .a(g_input),
+    .b(e_input),
     .zctr(1'b0),
     .aeqb(aeqb_inst),
     .altb(altb_inst),
