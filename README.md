@@ -31,7 +31,7 @@ Please ignore "lc_shell>" for them].
 Go inside `circuit_synthesis/benchmark`, where benchmark is the name of the function
 and compile the benchmark to generate the netlist:
 ```
-	$ cd gen_netlist/benchmark
+	$ cd benchmark
 	$ ./compile
 ```
 You can edit `benchmark.dcsh` file to change synthesis parameters.
@@ -57,11 +57,11 @@ starting with "design\_vision>" should be called inside `design_vision`.
 Please ignore "design\_vision>" for them.]
 
 ### Counting number of gates
-You can use `gen_netlist/script/count.sh` to count the number of gates in
+You can use `script/count.sh` to count the number of gates in
 the generated netlist file. For counting gates in
 `/path/to/benchmark/benchmark_syn.v`, simply run:
 ```
-	$ gen_netlist/script/count.sh /path/to/benchmark/benchmark_syn.v
+	$ script/count.sh /path/to/benchmark/benchmark_syn.v
 ```	
 ## Manual for Yosys
 
