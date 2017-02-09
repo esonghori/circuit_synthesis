@@ -9,16 +9,16 @@ analyze -format verilog {../syn_lib/FA.v ../syn_lib/ADD.v ../syn_lib/MULT.v ../s
 
 analyze -format verilog argmax.v
 
-foreach S {32} {
-foreach M {8} {
-elaborate argmax -architecture verilog -library DEFAULT -update -parameters $S,$M
+foreach N {10} {
+foreach M {32} {
+elaborate argmax -architecture verilog -library DEFAULT -update -parameters $N,$M
 set_max_area -ignore_tns 0
 set_flatten false -design *
 set_structure false -design *
 set_resource_allocation area_only
 report_compile_options
 compile -ungroup_all  -map_effort high -area_effort high -no_design_rule
-write -hierarchy -format verilog -output syn/argmax_syn_$S\_$M\_1cc.v
+write -hierarchy -format verilog -output syn/argmax_syn_$N\_$M\_1cc.v
 }
 }
 
