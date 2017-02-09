@@ -25,7 +25,7 @@ module cordic
   input clk;
   input rst;
   input [2*L-1:0] g_init; // {x, y}
-  input [2*L-1:0] e_init; // {z}
+  input [L-1:0] e_init; // {z}
   output [3*L-1:0] o;
   output terminate;
 
