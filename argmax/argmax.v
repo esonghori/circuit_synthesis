@@ -1,7 +1,7 @@
 module argmax
 #(
-  parameter N, // number of inputs
-  parameter M  // input bit-width
+  parameter N=10, // number of inputs
+  parameter M=32  // input bit-width
 )
 (
   in,
