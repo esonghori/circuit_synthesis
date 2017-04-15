@@ -28,7 +28,7 @@ module matrix_mult_N_M_0
 	genvar i;
 	genvar j;
 	genvar k;
-	
+
 	generate
 	for (i=0;i<N;i=i+1)
 	begin:ASS_ROW
@@ -43,8 +43,6 @@ module matrix_mult_N_M_0
 	end
 	endgenerate
 
-
-
 	generate
 	for (i=0;i<N;i=i+1)
 	begin:MUL_ROW_MULT
@@ -52,22 +50,12 @@ module matrix_mult_N_M_0
 		begin:MUL_COL_MULT
 			for (k=0;k<N;k=k+1)
 			begin:MULT_O
-				//assign xyijk[i][j][k] = xij[i][k]*yij[k][j];
-				MULT 
-				#(
-					.N(M)
-				)
-				MULT_
-				(
-					.A(xij[i][k]),
-					.B(yij[k][j]),
-					.O(xyijk[i][j][k])
-				);
+				assign xyijk[i][j][k] = xij[i][k]*yij[k][j];
 			end
 		end
 	end
 	endgenerate
-	
+
 	generate
 	for (i=0;i<N;i=i+1)
 	begin:MUL_ROW_ADD
@@ -75,23 +63,11 @@ module matrix_mult_N_M_0
 		begin:MUL_COL_ADD
 			for (k=1;k<N;k=k+1)
 			begin:ADD_O
-				ADD 
-				#(
-					.N(M)
-				)
-				ADD_
-				(
-					.A(xyijk[i][j][k][M-1:0]),
-					.B(oijk[i][j][k-1]),
-					.CI(1'b0),
-					.S(oijk[i][j][k]),
-					.CO()
-				);	
+				assign oijk[i][j][k] = xyijk[i][j][k][M-1:0] + oijk[i][j][k-1];
 			end
 		end
 	end
 	endgenerate
-	
-	
-endmodule
 
+
+endmodule

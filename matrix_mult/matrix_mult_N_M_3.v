@@ -15,47 +15,23 @@ module matrix_mult_N_M_3
 	input clk,rst;
 	input[M-1:0] g_input;
 	input[M-1:0] e_input;
-	output reg[M-1:0] o;
+	output[M-1:0] o;
 
 	wire [2*M-1:0] xy;
-	wire [M-1:0] oi;
-	
-	// assign xy = g_input*e_input;
-	MULT 
-	#(
-		.N(M)
-	) 
-	MULT_ 
-	(
-		.A(g_input), 
-		.B(e_input), 
-		.O(xy)
-	);
+	reg [M-1:0] o_reg;
 
-
-    // assign oi = xy[M-1:0] + o;
-	ADD 
-	#(
-		.N(M)
-	) 
-	ADD_ 
-	(
-		.A(xy[M-1:0]), 
-		.B(o), 
-		.CI(1'b0), 
-		.S(oi), 
-		.CO()
-	);
+	assign xy = g_input*e_input;
+	assign o = xy[M-1:0] + o_reg;
 
 	always@(posedge clk or posedge rst)
 	begin
 		if(rst)
 		begin
-			o <= 'b0;
+			o_reg <= 'b0;
 		end
 		else
 		begin
-			o <= oi;
+			o_reg <= o;
 		end
 	end
 endmodule
