@@ -13,6 +13,7 @@ grep -w -c 'NORN' $1
 grep -w -c 'MUX' $1
 grep -w -c 'FA' $1
 grep -w -c 'HA' $1
+grep -w -c 'HADDER' $1
 grep -w -c 'XOR' $1
 grep -w -c 'XNOR' $1
 grep -w -c 'IV' $1
